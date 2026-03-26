@@ -1,0 +1,7 @@
+# Require approval from @Zakariyau for all changes to main branch
+* @Zakariyau
+
+# Optional: You can add more specific rules for different paths
+# For example, require specific owners for certain directories:
+# /src/components/ @component-owner
+# /docs/ @documentation-team
