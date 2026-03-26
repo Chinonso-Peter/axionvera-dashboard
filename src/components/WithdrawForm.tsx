@@ -33,6 +33,7 @@ export default function WithdrawForm({ isConnected, isSubmitting, onWithdraw }: 
             setAmount("");
           }}
           disabled={!isConnected || isSubmitting}
+          aria-label={isSubmitting ? "Submitting withdrawal" : "Withdraw tokens"}
           className="rounded-xl border border-slate-800 bg-slate-900/30 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-slate-900/60 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? "Submitting..." : "Withdraw"}

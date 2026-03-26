@@ -28,6 +28,7 @@ export default function HomePage() {
             <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Link
                 href="/dashboard"
+                aria-label="Open the dashboard to manage your vault"
                 className="inline-flex items-center justify-center rounded-xl bg-axion-500 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-axion-500/20 transition hover:bg-axion-400"
               >
                 Open Dashboard
@@ -36,6 +37,7 @@ export default function HomePage() {
                 href="https://github.com/"
                 target="_blank"
                 rel="noreferrer"
+                aria-label="View the project source code on GitHub"
                 className="inline-flex items-center justify-center rounded-xl border border-slate-800 bg-slate-900/30 px-5 py-3 text-sm font-medium text-slate-200 transition hover:bg-slate-900/60"
               >
                 View on GitHub

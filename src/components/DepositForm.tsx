@@ -33,6 +33,7 @@ export default function DepositForm({ isConnected, isSubmitting, onDeposit }: De
             setAmount("");
           }}
           disabled={!isConnected || isSubmitting}
+          aria-label={isSubmitting ? "Submitting deposit" : "Deposit tokens"}
           className="rounded-xl bg-axion-500 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-axion-500/20 transition hover:bg-axion-400 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isSubmitting ? "Submitting..." : "Deposit"}

@@ -43,6 +43,7 @@ export default function TransactionHistory({
           type="button"
           onClick={onClaimRewards}
           disabled={!isConnected || isClaiming}
+          aria-label={isClaiming ? "Claiming rewards" : "Claim your earned rewards"}
           className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isClaiming ? "Claiming..." : "Claim Rewards"}
