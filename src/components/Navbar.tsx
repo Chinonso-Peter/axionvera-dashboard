@@ -61,7 +61,7 @@ export default function Navbar({ address, isConnecting, onConnect, onDisconnect 
             <a
               href="https://stellar.org/soroban"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="rounded-lg px-3 py-2 hover:bg-slate-900/60"
             >
               Soroban
@@ -143,7 +143,7 @@ export default function Navbar({ address, isConnecting, onConnect, onDisconnect 
             <a
               href="https://stellar.org/soroban"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="rounded-lg px-3 py-3 text-sm text-slate-200 hover:bg-slate-900/60"
             >
               Soroban
