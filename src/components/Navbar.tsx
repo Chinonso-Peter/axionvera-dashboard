@@ -19,9 +19,9 @@ export default function Navbar({ address, isConnecting, onConnect, onDisconnect 
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2">
-            <div 
-              aria-hidden="true" 
-              className="h-9 w-9 rounded-xl bg-gradient-to-br from-axion-500 to-indigo-500 shadow-lg shadow-axion-500/20" 
+            <div
+              aria-hidden="true"
+              className="h-9 w-9 rounded-xl bg-gradient-to-br from-axion-500 to-indigo-500 shadow-lg shadow-axion-500/20"
             />
             <div className="leading-tight">
               <div className="text-sm font-semibold text-white">Axionvera</div>
@@ -31,6 +31,9 @@ export default function Navbar({ address, isConnecting, onConnect, onDisconnect 
           <nav className="hidden items-center gap-3 text-sm text-slate-300 sm:flex">
             <Link href="/dashboard" className="rounded-lg px-3 py-2 hover:bg-slate-900/60">
               Vault
+            </Link>
+            <Link href="/profile" className="rounded-lg px-3 py-2 hover:bg-slate-900/60">
+              Profile
             </Link>
             <a
               href="https://stellar.org/soroban"
@@ -42,7 +45,7 @@ export default function Navbar({ address, isConnecting, onConnect, onDisconnect 
             </a>
           </nav>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {address ? (
             <div className="flex items-center gap-2">
@@ -100,12 +103,19 @@ export default function Navbar({ address, isConnecting, onConnect, onDisconnect 
       {isMenuOpen && (
         <nav className="border-t border-slate-800 bg-slate-950 px-6 py-4 sm:hidden">
           <div className="flex flex-col gap-2">
-            <Link 
-              href="/dashboard" 
+            <Link
+              href="/dashboard"
               onClick={() => setIsMenuOpen(false)}
               className="rounded-lg px-3 py-3 text-sm text-slate-200 hover:bg-slate-900/60"
             >
               Vault
+            </Link>
+            <Link
+              href="/profile"
+              onClick={() => setIsMenuOpen(false)}
+              className="rounded-lg px-3 py-3 text-sm text-slate-200 hover:bg-slate-900/60"
+            >
+              Profile
             </Link>
             <a
               href="https://stellar.org/soroban"

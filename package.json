@@ -23,9 +23,12 @@
     "next": "^14.2.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "stellar-sdk": "^12.1.0"
+    "react-hook-form": "^7.48.2",
+    "stellar-sdk": "^12.1.0",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@hookform/resolvers": "^3.3.2",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.5.2",
