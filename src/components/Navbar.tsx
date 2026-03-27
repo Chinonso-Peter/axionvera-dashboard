@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { useSidebar } from "@/hooks/useSidebar";
 import { shortenAddress } from "@/utils/contractHelpers";
 
 type NavbarProps = {
@@ -12,16 +13,38 @@ type NavbarProps = {
 
 export default function Navbar({ address, isConnecting, onConnect, onDisconnect }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebar();
   const short = useMemo(() => (address ? shortenAddress(address, 6) : null), [address]);
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
         <div className="flex items-center gap-4">
+          {/* Desktop Sidebar Toggle */}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            aria-expanded={isSidebarOpen}
+            className="hidden lg:flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800 bg-slate-900/30 text-slate-300 transition hover:bg-slate-900/60"
+          >
+            <svg
+              className="h-5 w-5 transition-transform duration-300"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+              style={{ transform: isSidebarOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+          </button>
+
           <Link href="/" className="flex items-center gap-2">
-            <div 
-              aria-hidden="true" 
-              className="h-9 w-9 rounded-xl bg-gradient-to-br from-axion-500 to-indigo-500 shadow-lg shadow-axion-500/20" 
+            <div
+              aria-hidden="true"
+              className="h-9 w-9 rounded-xl bg-gradient-to-br from-axion-500 to-indigo-500 shadow-lg shadow-axion-500/20"
             />
             <div className="leading-tight">
               <div className="text-sm font-semibold text-white">Axionvera</div>
@@ -42,7 +65,7 @@ export default function Navbar({ address, isConnecting, onConnect, onDisconnect 
             </a>
           </nav>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {address ? (
             <div className="flex items-center gap-2">
@@ -100,8 +123,8 @@ export default function Navbar({ address, isConnecting, onConnect, onDisconnect 
       {isMenuOpen && (
         <nav className="border-t border-slate-800 bg-slate-950 px-6 py-4 sm:hidden">
           <div className="flex flex-col gap-2">
-            <Link 
-              href="/dashboard" 
+            <Link
+              href="/dashboard"
               onClick={() => setIsMenuOpen(false)}
               className="rounded-lg px-3 py-3 text-sm text-slate-200 hover:bg-slate-900/60"
             >
