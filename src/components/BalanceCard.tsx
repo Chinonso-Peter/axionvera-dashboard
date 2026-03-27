@@ -1,4 +1,5 @@
 import { formatAmount, shortenAddress } from "@/utils/contractHelpers";
+import { StatisticsSkeleton } from "./Skeletons";
 
 type BalanceCardProps = {
   isConnected: boolean;
@@ -19,6 +20,8 @@ export default function BalanceCard({
   error,
   onRefresh
 }: BalanceCardProps) {
+  if (isLoading) return <StatisticsSkeleton />;
+
   return (
     <section className="rounded-2xl border border-border-primary bg-background-primary/30 p-6">
       <div className="flex items-start justify-between gap-4">

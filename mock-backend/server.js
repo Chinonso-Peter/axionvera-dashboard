@@ -8,6 +8,12 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Simulated latency middleware
+app.use((req, res, next) => {
+  const delay = Math.floor(Math.random() * 1000) + 500; // 0.5s - 1.5s
+  setTimeout(next, delay);
+});
+
 // Mock API endpoints
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });

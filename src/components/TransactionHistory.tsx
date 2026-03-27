@@ -1,5 +1,6 @@
 import { formatAmount, shortenAddress } from "@/utils/contractHelpers";
 import type { VaultTx } from "@/utils/contractHelpers";
+import { TransactionSkeleton } from "./Skeletons";
 
 type TransactionHistoryProps = {
   isConnected: boolean;
@@ -59,7 +60,7 @@ export default function TransactionHistory({
         </div>
         <div className="divide-y divide-border-primary">
           {isLoading ? (
-            <div className="px-4 py-6 text-sm text-text-secondary">Loading transactions...</div>
+            <TransactionSkeleton />
           ) : transactions.length === 0 ? (
             <div className="px-4 py-6 text-sm text-text-secondary">No transactions yet.</div>
           ) : (

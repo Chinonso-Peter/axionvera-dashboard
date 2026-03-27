@@ -6,12 +6,12 @@ export interface FormFieldError {
   hasError: boolean;
 }
 
-export interface FormErrors<T extends Record<string, any>> {
+export type FormErrors<T extends Record<string, any>> = {
   [K in keyof T]: FormFieldError;
-}
+};
 
 export interface UseFormValidationProps<T extends Record<string, any>> {
-  schema: ZodSchema<T>;
+  schema: z.ZodTypeAny;
   initialValues: T;
   onSubmit?: (values: T) => void | Promise<void>;
 }
@@ -31,7 +31,13 @@ export function useFormValidation<T extends Record<string, any>>({
   const validateField = useCallback(
     (field: keyof T, value: any) => {
       try {
-        const fieldSchema = schema.shape[field as string];
+        // Handle both ZodObject and ZodEffects (from .refine)
+        let internalSchema = schema as any;
+        while (internalSchema._def && internalSchema._def.schema) {
+          internalSchema = internalSchema._def.schema;
+        }
+        
+        const fieldSchema = internalSchema.shape ? internalSchema.shape[field as string] : null;
         if (fieldSchema) {
           fieldSchema.parse(value);
           return { message: '', hasError: false };

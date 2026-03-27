@@ -36,7 +36,7 @@ export default function SecuritySettingsForm({ onSubmit }: SecuritySettingsFormP
   const newPasswordProps = getFieldProps('newPassword');
   const confirmPasswordProps = getFieldProps('confirmPassword');
 
-  const hasNewPassword = values.newPassword && values.newPassword.length > 0;
+  const hasNewPassword = !!values.newPassword && values.newPassword.length > 0;
 
   return (
     <div className="rounded-2xl border border-border-primary bg-background-primary/30 p-6">
@@ -145,19 +145,19 @@ export default function SecuritySettingsForm({ onSubmit }: SecuritySettingsFormP
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <div className={`h-1 flex-1 rounded-full ${
-                  values.newPassword.length >= 8 ? 'bg-green-500' : 'bg-slate-700'
+                  (values.newPassword || '').length >= 8 ? 'bg-green-500' : 'bg-slate-700'
                 }`} />
                 <div className={`h-1 flex-1 rounded-full ${
-                  /[A-Z]/.test(values.newPassword) ? 'bg-green-500' : 'bg-slate-700'
+                  /[A-Z]/.test(values.newPassword || '') ? 'bg-green-500' : 'bg-slate-700'
                 }`} />
                 <div className={`h-1 flex-1 rounded-full ${
-                  /[a-z]/.test(values.newPassword) ? 'bg-green-500' : 'bg-slate-700'
+                  /[a-z]/.test(values.newPassword || '') ? 'bg-green-500' : 'bg-slate-700'
                 }`} />
                 <div className={`h-1 flex-1 rounded-full ${
-                  /[0-9]/.test(values.newPassword) ? 'bg-green-500' : 'bg-slate-700'
+                  /[0-9]/.test(values.newPassword || '') ? 'bg-green-500' : 'bg-slate-700'
                 }`} />
                 <div className={`h-1 flex-1 rounded-full ${
-                  /[^A-Za-z0-9]/.test(values.newPassword) ? 'bg-green-500' : 'bg-slate-700'
+                  /[^A-Za-z0-9]/.test(values.newPassword || '') ? 'bg-green-500' : 'bg-slate-700'
                 }`} />
               </div>
               <div className="grid grid-cols-5 gap-2 text-xs text-slate-500">

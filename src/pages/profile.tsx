@@ -4,14 +4,22 @@ import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import ProfileForm from "@/components/ProfileForm";
 import SecuritySettingsForm from "@/components/SecuritySettingsForm";
+import { UserProfileSkeleton } from "@/components/Skeletons";
 import { useSidebar } from "@/hooks/useSidebar";
 import { useWallet } from "@/hooks/useWallet";
 import { ProfileFormData, SecuritySettingsFormData } from "@/utils/validation";
+import { useEffect } from "react";
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
+  const [isLoading, setIsLoading] = useState(true);
   const { isOpen } = useSidebar();
   const wallet = useWallet();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleProfileSubmit = async (data: ProfileFormData) => {
     console.log('Profile data:', data);
@@ -80,7 +88,9 @@ export default function ProfilePage() {
 
             {/* Tab Content */}
             <div className="space-y-6">
-              {activeTab === 'profile' && (
+              {isLoading ? (
+                <UserProfileSkeleton />
+              ) : activeTab === 'profile' ? (
                 <ProfileForm
                   initialData={{
                     firstName: 'John',
@@ -92,9 +102,7 @@ export default function ProfilePage() {
                   }}
                   onSubmit={handleProfileSubmit}
                 />
-              )}
-
-              {activeTab === 'security' && (
+              ) : (
                 <SecuritySettingsForm onSubmit={handleSecuritySubmit} />
               )}
             </div>

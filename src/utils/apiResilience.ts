@@ -39,7 +39,7 @@ export function withApiResilience<T extends (...args: any[]) => Promise<any>>(
   } = options;
 
   return (async (...args: Parameters<T>): Promise<ReturnType<T>> => {
-    let lastError: Error;
+    let lastError: Error = new Error('Unknown error');
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {

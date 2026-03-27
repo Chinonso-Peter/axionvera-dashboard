@@ -11,10 +11,52 @@ class FatalError extends Error {
 }
 
 /**
+ * Simple environment loader to mimic Next.js behavior for the validation script.
+ * Loads variables from .env files into process.env if they are not already set.
+ */
+function loadEnvironment() {
+  const envFiles = [
+    '.env.local',
+    '.env.development',
+    '.env'
+  ];
+  
+  console.log('📂 Loading environment files...');
+  
+  envFiles.forEach(file => {
+    const filePath = path.join(process.cwd(), file);
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf8');
+      let count = 0;
+      content.split('\n').forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+          const [key, ...valueParts] = trimmed.split('=');
+          const k = key.trim();
+          const v = valueParts.join('=').trim();
+          // We only set it if it's not already in process.env
+          if (k && process.env[k] === undefined) {
+             process.env[k] = v;
+             count++;
+          }
+        }
+      });
+      if (count > 0) {
+        console.log(`   ✅ Loaded ${count} variables from ${file}`);
+      }
+    }
+  });
+  console.log('');
+}
+
+/**
  * Validates that all required environment variables from .env.example are present
  * in the current process.env
  */
 function validateEnvironment() {
+  // Load environment variables first
+  loadEnvironment();
+  
   console.log('🔍 Validating environment variables...\n');
   
   try {

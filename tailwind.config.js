@@ -32,7 +32,15 @@ module.exports = {
           800: "#1e40af",
           900: "#1e3a8a"
         }
-      }
+      },
+      keyframes: {
+        shimmer: {
+          '100%': { transform: 'translateX(100%)' },
+        },
+      },
+      animation: {
+        shimmer: 'shimmer 2s infinite',
+      },
     }
   },
   plugins: []
