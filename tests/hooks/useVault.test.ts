@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 
 import { useVault } from "@/hooks/useVault";
+import type { AxionveraVaultSdk } from "@/utils/contractHelpers";
 
 describe("useVault", () => {
   test("deposit updates balance and history", async () => {
@@ -55,5 +56,33 @@ describe("useVault", () => {
     expect(result.current.withdrawStatus).toBe("error");
     expect(result.current.withdrawError).toMatch(/exceeds your available vault balance/i);
     expect(Number(result.current.balance)).toBe(5);
+  });
+
+  test("deposit surfaces sdk errors without changing the public api", async () => {
+    const failingSdk: AxionveraVaultSdk = {
+      getBalances: async () => ({ balance: "0", rewards: "0" }),
+      getTransactions: async () => [],
+      deposit: async () => {
+        throw new Error("Simulated deposit failure");
+      },
+      withdraw: async () => ({ id: "withdraw-1", type: "withdraw", amount: "1", status: "success", createdAt: new Date().toISOString() }),
+      claimRewards: async () => ({ id: "claim-1", type: "claim", amount: "0", status: "success", createdAt: new Date().toISOString() })
+    };
+
+    const { result } = renderHook(() =>
+      useVault({ walletAddress: "GTESTWALLETADDRESS_4", sdk: failingSdk })
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.deposit("7");
+    });
+
+    expect(result.current.depositStatus).toBe("error");
+    expect(result.current.depositError).toMatch(/simulated deposit failure/i);
+    expect(result.current.error).toMatch(/simulated deposit failure/i);
+    expect(result.current.transactions[0]?.status).toBe("failed");
+    expect(result.current.transactions[0]?.type).toBe("deposit");
   });
 });
