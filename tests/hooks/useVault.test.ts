@@ -30,10 +30,30 @@ describe("useVault", () => {
     await waitFor(() => expect(result.current.isSubmitting).toBe(false));
 
     await act(async () => {
-      await result.current.withdraw("3");
+      void result.current.withdraw("3");
     });
+    await waitFor(() => expect(result.current.withdrawStatus).toBe("pending"));
     await waitFor(() => expect(result.current.isSubmitting).toBe(false));
 
     expect(Number(result.current.balance)).toBeGreaterThanOrEqual(0);
+    expect(result.current.withdrawStatus).toBe("success");
+    expect(result.current.withdrawHash).toMatch(/^SIM-/);
+  });
+
+  test("withdraw prevents invalid amounts above balance", async () => {
+    const { result } = renderHook(() => useVault({ walletAddress: "GTESTWALLETADDRESS_3" }));
+
+    await act(async () => {
+      await result.current.deposit("5");
+    });
+    await waitFor(() => expect(result.current.isSubmitting).toBe(false));
+
+    await act(async () => {
+      await result.current.withdraw("10");
+    });
+
+    expect(result.current.withdrawStatus).toBe("error");
+    expect(result.current.withdrawError).toMatch(/exceeds your available vault balance/i);
+    expect(Number(result.current.balance)).toBe(5);
   });
 });

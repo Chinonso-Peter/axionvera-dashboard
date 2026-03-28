@@ -21,6 +21,10 @@ type VaultState = {
   depositHash: string | null;
   lastDepositAmount: string | null;
   depositError: string | null;
+  withdrawStatus: "idle" | "pending" | "success" | "error";
+  withdrawHash: string | null;
+  lastWithdrawAmount: string | null;
+  withdrawError: string | null;
 };
 
 export function useVault({ walletAddress }: UseVaultArgs) {
@@ -36,7 +40,11 @@ export function useVault({ walletAddress }: UseVaultArgs) {
     depositStatus: "idle",
     depositHash: null,
     lastDepositAmount: null,
-    depositError: null
+    depositError: null,
+    withdrawStatus: "idle",
+    withdrawHash: null,
+    lastWithdrawAmount: null,
+    withdrawError: null
   });
 
   const refresh = useCallback(async () => {
@@ -147,27 +155,85 @@ export function useVault({ walletAddress }: UseVaultArgs) {
     async (amountInput: string) => {
       const amount = parsePositiveAmount(amountInput);
       if (!walletAddress) {
-        setState((s) => ({ ...s, error: "Connect a wallet to withdraw." }));
+        setState((s) => ({
+          ...s,
+          error: "Connect a wallet to withdraw.",
+          withdrawStatus: "error",
+          withdrawError: "Connect a wallet to withdraw.",
+          withdrawHash: null
+        }));
         return;
       }
       if (!amount) {
-        setState((s) => ({ ...s, error: "Enter a valid amount greater than zero." }));
+        setState((s) => ({
+          ...s,
+          error: "Enter a valid amount greater than zero.",
+          withdrawStatus: "error",
+          withdrawError: "Enter a valid amount greater than zero.",
+          withdrawHash: null
+        }));
+        return;
+      }
+      if (Number(amount) > Number(state.balance)) {
+        setState((s) => ({
+          ...s,
+          error: "Withdrawal amount exceeds your available vault balance.",
+          withdrawStatus: "error",
+          withdrawError: "Withdrawal amount exceeds your available vault balance.",
+          withdrawHash: null,
+          lastWithdrawAmount: amount
+        }));
         return;
       }
 
-      setState((s) => ({ ...s, isSubmitting: true, error: null }));
+      const pendingTx: VaultTx = {
+        id: `pending-${Date.now()}`,
+        type: "withdraw",
+        amount,
+        status: "pending",
+        createdAt: new Date().toISOString()
+      };
+
+      setState((s) => ({
+        ...s,
+        isSubmitting: true,
+        error: null,
+        withdrawStatus: "pending",
+        withdrawHash: null,
+        withdrawError: null,
+        lastWithdrawAmount: amount,
+        transactions: [pendingTx, ...s.transactions.filter((tx) => tx.id !== pendingTx.id)].slice(0, 25)
+      }));
       try {
-        await sdk.withdraw({ walletAddress, network: NETWORK, amount });
+        const tx = await sdk.withdraw({ walletAddress, network: NETWORK, amount });
         await refresh();
+        setState((s) => ({
+          ...s,
+          withdrawStatus: "success",
+          withdrawHash: tx.hash ?? null,
+          withdrawError: null,
+          lastWithdrawAmount: amount
+        }));
       } catch (e) {
         const message = e instanceof Error ? e.message : "Withdraw failed.";
         notify.error("Withdrawal Failed", message);
-        setState((s) => ({ ...s, error: message }));
+        setState((s) => ({
+          ...s,
+          error: message,
+          withdrawStatus: "error",
+          withdrawError: message,
+          withdrawHash: null,
+          lastWithdrawAmount: amount,
+          transactions: [
+            { ...pendingTx, status: "failed" as const },
+            ...s.transactions.filter((tx) => tx.id !== pendingTx.id)
+          ].slice(0, 25)
+        }));
       } finally {
         setState((s) => ({ ...s, isSubmitting: false }));
       }
     },
-    [refresh, sdk, walletAddress]
+    [refresh, sdk, state.balance, walletAddress]
   );
 
   const claimRewards = useCallback(async () => {
@@ -201,6 +267,10 @@ export function useVault({ walletAddress }: UseVaultArgs) {
     depositHash: state.depositHash,
     lastDepositAmount: state.lastDepositAmount,
     depositError: state.depositError,
+    withdrawStatus: state.withdrawStatus,
+    withdrawHash: state.withdrawHash,
+    lastWithdrawAmount: state.lastWithdrawAmount,
+    withdrawError: state.withdrawError,
     refresh,
     deposit,
     withdraw,

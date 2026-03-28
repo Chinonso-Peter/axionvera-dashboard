@@ -67,7 +67,19 @@ export default function DashboardPage() {
                   <WithdrawForm
                     isConnected={wallet.isConnected}
                     isSubmitting={vault.isSubmitting}
+                    balance={vault.balance}
                     onWithdraw={vault.withdraw}
+                    status={vault.withdrawStatus}
+                    statusMessage={
+                      vault.withdrawStatus === "pending"
+                        ? `Withdrawing ${vault.lastWithdrawAmount ?? "0"} tokens from the vault.`
+                        : vault.withdrawStatus === "success"
+                          ? `Successfully withdrew ${vault.lastWithdrawAmount ?? "0"} tokens.`
+                          : vault.withdrawStatus === "error"
+                            ? vault.withdrawError
+                            : null
+                    }
+                    transactionHash={vault.withdrawHash}
                   />
                 </div>
                 <div className="mt-6">
