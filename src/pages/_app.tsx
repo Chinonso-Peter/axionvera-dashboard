@@ -5,6 +5,7 @@ import "@/styles/globals.css";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { WalletProvider } from "@/contexts/WalletContext";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
@@ -12,6 +13,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <ThemeProvider>
         <WalletProvider>
           <Component {...pageProps} />
+          <ThemeToggle />
           <Toaster
             position="top-right"
             richColors

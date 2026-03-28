@@ -10,9 +10,7 @@ import { useVault } from "@/hooks/useVault";
 import { useWallet } from "@/hooks/useWallet";
 
 export default function DashboardPage() {
-  // TODO: add dark mode
   // TODO: add analytics dashboard
-  // TODO: improve mobile responsiveness
   // TODO: add wallet options
   // TODO: add governance interface
 
@@ -24,18 +22,18 @@ export default function DashboardPage() {
       <Head>
         <title>Dashboard · Axionvera</title>
       </Head>
-      <main className="min-h-screen bg-background-primary">
+      <main className="min-h-screen bg-background-primary text-text-primary transition-colors duration-200">
         <Sidebar />
-        <div className="lg:pl-64">
+        <div className="flex-1 lg:pl-64 w-full transition-all">
           <Navbar
             address={wallet.address}
             isConnecting={wallet.isConnecting}
             onConnect={wallet.connect}
             onDisconnect={wallet.disconnect}
           />
-          <div className="mx-auto max-w-6xl px-6 py-8">
-            <div className="grid gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-1">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 md:py-8 w-full">
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+              <div className="col-span-1 lg:col-span-1 w-full">
                 <BalanceCard
                   isConnected={wallet.isConnected}
                   address={wallet.address}
@@ -46,8 +44,8 @@ export default function DashboardPage() {
                   onRefresh={vault.refresh}
                 />
               </div>
-              <div className="lg:col-span-2">
-                <div className="grid gap-6 md:grid-cols-2">
+              <div className="col-span-1 lg:col-span-2 w-full">
+                <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
                   <DepositForm
                     isConnected={wallet.isConnected}
                     isSubmitting={vault.isSubmitting}
@@ -82,7 +80,7 @@ export default function DashboardPage() {
                     transactionHash={vault.withdrawHash}
                   />
                 </div>
-                <div className="mt-6">
+                <div className="mt-6 w-full overflow-x-auto">
                   <TransactionHistory
                     isConnected={wallet.isConnected}
                     address={wallet.address}
