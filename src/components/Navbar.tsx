@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { useMemo, useState } from "react";
 
 import { useSidebar } from "@/hooks/useSidebar";
@@ -43,9 +44,13 @@ export default function Navbar({ address, isConnecting, onConnect, onDisconnect 
           </button>
 
           <Link href="/" className="flex items-center gap-2">
-            <div
-              aria-hidden="true"
-              className="h-9 w-9 rounded-xl bg-gradient-to-br from-axion-500 to-indigo-500 shadow-lg shadow-axion-500/20"
+            <Image
+              src="/axionvera.svg"
+              alt="Axionvera logo"
+              width={36}
+              height={36}
+              priority
+              className="rounded-xl shadow-lg shadow-axion-500/20"
             />
             <div className="leading-tight">
               <div className="text-sm font-semibold text-slate-900 dark:text-white">Axionvera</div>
