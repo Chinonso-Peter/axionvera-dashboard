@@ -14,6 +14,8 @@ type TransactionHistoryProps = {
 
 type TypeFilter = "all" | VaultTxType;
 type StatusFilter = "all" | VaultTxStatus;
+type SortKey = "createdAt" | "amount";
+type SortDirection = "asc" | "desc";
 
 const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
   { value: "all", label: "All Types" },
@@ -41,6 +43,11 @@ function typeLabel(type: VaultTx["type"]) {
   return "Claim";
 }
 
+function sortIcon(active: boolean, direction: SortDirection) {
+  if (!active) return "↕";
+  return direction === "asc" ? "↑" : "↓";
+}
+
 const selectClassName =
   "rounded-lg border border-border-primary bg-background-secondary/30 px-3 py-1.5 text-xs text-text-primary outline-none transition hover:bg-background-secondary/60 focus:border-axion-500";
 
@@ -54,6 +61,8 @@ export default function TransactionHistory({
 }: TransactionHistoryProps) {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("createdAt");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
@@ -63,7 +72,33 @@ export default function TransactionHistory({
     });
   }, [transactions, typeFilter, statusFilter]);
 
+  const sortedTransactions = useMemo(() => {
+    const sorted = [...filteredTransactions];
+    sorted.sort((a, b) => {
+      const directionFactor = sortDirection === "asc" ? 1 : -1;
+
+      if (sortKey === "amount") {
+        return (Number(a.amount) - Number(b.amount)) * directionFactor;
+      }
+
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return (dateA - dateB) * directionFactor;
+    });
+    return sorted;
+  }, [filteredTransactions, sortKey, sortDirection]);
+
   const hasActiveFilter = typeFilter !== "all" || statusFilter !== "all";
+
+  const toggleSort = (nextKey: SortKey) => {
+    if (sortKey === nextKey) {
+      setSortDirection((previousDirection) => (previousDirection === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortKey(nextKey);
+    setSortDirection("desc");
+  };
 
   return (
     <section className="rounded-2xl border border-border-primary bg-background-primary/30 p-6">
@@ -129,37 +164,103 @@ export default function TransactionHistory({
       </div>
 
       <div className="mt-5 overflow-hidden rounded-2xl border border-border-primary">
-        <div className="grid grid-cols-[1.2fr_1fr_1fr_0.9fr] gap-3 bg-background-secondary/20 px-4 py-3 text-xs text-text-secondary">
-          <div>Type</div>
-          <div>Amount</div>
-          <div>Created</div>
-          <div>Status</div>
+        <div className="hidden sm:block">
+          <div className="grid grid-cols-[1.2fr_1fr_1fr_0.9fr] gap-3 bg-background-secondary/20 px-4 py-3 text-xs text-text-secondary">
+            <div>Type</div>
+            <button
+              type="button"
+              onClick={() => toggleSort("amount")}
+              className="inline-flex items-center gap-1 text-left transition hover:text-text-primary"
+            >
+              Amount
+              <span aria-hidden>{sortIcon(sortKey === "amount", sortDirection)}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleSort("createdAt")}
+              className="inline-flex items-center gap-1 text-left transition hover:text-text-primary"
+            >
+              Date
+              <span aria-hidden>{sortIcon(sortKey === "createdAt", sortDirection)}</span>
+            </button>
+            <div>Status</div>
+          </div>
+          <div className="divide-y divide-border-primary">
+            {isLoading ? (
+              <TransactionSkeleton />
+            ) : sortedTransactions.length === 0 ? (
+              <div className="px-4 py-6 text-sm text-text-secondary">
+                {hasActiveFilter ? "No transactions match the selected filters." : "No transactions yet."}
+              </div>
+            ) : (
+              sortedTransactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="grid grid-cols-[1.2fr_1fr_1fr_0.9fr] items-center gap-3 px-4 py-3 text-sm"
+                >
+                  <div className="text-text-primary">{typeLabel(tx.type)}</div>
+                  <div className="text-text-primary">{formatAmount(tx.amount)}</div>
+                  <div className="text-text-muted">{new Date(tx.createdAt).toLocaleString()}</div>
+                  <div>
+                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${statusStyles(tx.status)}`}>
+                      {tx.status}
+                    </span>
+                    {tx.hash ? <div className="mt-1 text-xs text-text-muted">Hash: {shortenAddress(tx.hash, 8)}</div> : null}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
-        <div className="divide-y divide-border-primary">
+
+        <div className="divide-y divide-border-primary sm:hidden">
+          <div className="flex items-center gap-4 px-4 py-3 text-xs text-text-secondary">
+            <button
+              type="button"
+              onClick={() => toggleSort("amount")}
+              className="inline-flex items-center gap-1 transition hover:text-text-primary"
+            >
+              Amount
+              <span aria-hidden>{sortIcon(sortKey === "amount", sortDirection)}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleSort("createdAt")}
+              className="inline-flex items-center gap-1 transition hover:text-text-primary"
+            >
+              Date
+              <span aria-hidden>{sortIcon(sortKey === "createdAt", sortDirection)}</span>
+            </button>
+          </div>
           {isLoading ? (
             <TransactionSkeleton />
-          ) : filteredTransactions.length === 0 ? (
+          ) : sortedTransactions.length === 0 ? (
             <div className="px-4 py-6 text-sm text-text-secondary">
               {hasActiveFilter ? "No transactions match the selected filters." : "No transactions yet."}
             </div>
           ) : (
-            filteredTransactions.map((tx) => (
-              <div
-                key={tx.id}
-                className="grid grid-cols-[1.2fr_1fr_1fr_0.9fr] items-center gap-3 px-4 py-3 text-sm"
-              >
-                <div className="text-text-primary">{typeLabel(tx.type)}</div>
-                <div className="text-text-primary">{formatAmount(tx.amount)}</div>
-                <div className="text-text-muted">{new Date(tx.createdAt).toLocaleString()}</div>
-                <div>
-                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${statusStyles(tx.status)}`}>
+            sortedTransactions.map((tx) => (
+              <article key={tx.id} className="space-y-2 px-4 py-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-text-primary">{typeLabel(tx.type)}</span>
+                  <span
+                    className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${statusStyles(
+                      tx.status
+                    )}`}
+                  >
                     {tx.status}
                   </span>
-                  {tx.hash ? (
-                    <div className="mt-1 text-xs text-text-muted">Hash: {shortenAddress(tx.hash, 8)}</div>
-                  ) : null}
                 </div>
-              </div>
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-text-muted">Amount</span>
+                  <span className="text-text-primary">{formatAmount(tx.amount)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-text-muted">Date</span>
+                  <span className="text-text-muted">{new Date(tx.createdAt).toLocaleString()}</span>
+                </div>
+                {tx.hash ? <div className="text-xs text-text-muted">Hash: {shortenAddress(tx.hash, 8)}</div> : null}
+              </article>
             ))
           )}
         </div>
