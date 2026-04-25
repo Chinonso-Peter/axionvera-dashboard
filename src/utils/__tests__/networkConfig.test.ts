@@ -12,6 +12,7 @@ describe('networkConfig', () => {
 
   it('should use default values for testnet', () => {
     (getEnv as jest.Mock).mockReturnValue(undefined);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const nc = require('../networkConfig');
     expect(nc.NETWORK).toBe('testnet');
   });
@@ -21,6 +22,7 @@ describe('networkConfig', () => {
       if (key === 'NEXT_PUBLIC_STELLAR_NETWORK') return 'mainnet';
       return undefined;
     });
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const nc = require('../networkConfig');
     expect(nc.NETWORK).toBe('mainnet');
   });
@@ -30,6 +32,7 @@ describe('networkConfig', () => {
       if (key === 'NEXT_PUBLIC_STELLAR_NETWORK') return 'futurenet';
       return undefined;
     });
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const nc = require('../networkConfig');
     expect(nc.NETWORK).toBe('futurenet');
   });
@@ -39,6 +42,7 @@ describe('networkConfig', () => {
       if (key === 'NEXT_PUBLIC_SOROBAN_RPC_URL') return 'https://custom-rpc.com';
       return undefined;
     });
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const nc = require('../networkConfig');
     expect(nc.SOROBAN_RPC_URL).toBe('https://custom-rpc.com');
   });
@@ -48,6 +52,7 @@ describe('networkConfig', () => {
       if (key === 'NEXT_PUBLIC_AXIONVERA_VAULT_CONTRACT_ID') return 'VAULT123';
       return undefined;
     });
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const nc = require('../networkConfig');
     expect(nc.AXIONVERA_VAULT_CONTRACT_ID).toBe('VAULT123');
   });

@@ -20,11 +20,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const { theme, setTheme, resolvedTheme } = useNextTheme();
 
   return (
-    <ThemeContext.Provider value={{ 
-      theme: theme as Theme, 
-      setTheme: (t: Theme) => setTheme(t), 
-      resolvedTheme: resolvedTheme as ResolvedTheme 
-    }}>
+    <ThemeContext.Provider
+      value={{
+        theme: theme as Theme,
+        setTheme: (t: Theme) => setTheme(t),
+        resolvedTheme: resolvedTheme as ResolvedTheme,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );
@@ -33,12 +35,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (context === undefined) {
-    // Fallback to next-themes directly if provider is missing
-    try {
-      return useNextTheme();
-    } catch {
-      throw new Error('useTheme must be used within a ThemeProvider');
-    }
+    throw new Error('useTheme must be used within a ThemeProvider');
   }
   return context;
 }

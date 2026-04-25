@@ -11,7 +11,7 @@ type DepositFormProps = {
   isConnected: boolean;
   isSubmitting: boolean;
   onDeposit: (amount: string) => Promise<void>;
-  status: "idle" | "pending" | "success" | "error";
+  status: 'idle' | 'pending' | 'success' | 'error';
   statusMessage?: string | null;
   transactionHash?: string | null;
 };
@@ -22,25 +22,25 @@ export default function DepositForm({
   onDeposit,
   status,
   statusMessage,
-  transactionHash
+  transactionHash,
 }: DepositFormProps) {
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isValid, isDirty }
+    formState: { isValid, isDirty, errors },
   } = useForm<DepositFormData>({
     resolver: zodResolver(depositSchema),
     mode: 'onChange',
     defaultValues: {
-      amount: '' as any,
-    }
+      amount: '' as unknown as number,
+    },
   });
 
   const onSubmit = async (data: DepositFormData) => {
     try {
       await onDeposit(data.amount.toString());
-      notify.success("Deposit Successful", `You have deposited ${data.amount} tokens.`);
+      notify.success('Deposit Successful', `You have deposited ${data.amount} tokens.`);
       reset();
     } catch (error) {
       console.error('Deposit error:', error);
@@ -62,6 +62,7 @@ export default function DepositForm({
           placeholder="0.0"
           label="Amount"
           required
+          error={errors.amount}
           helperText={
             <span>
               Enter amount between 0.0001 and 10,000{' '}
@@ -87,11 +88,17 @@ export default function DepositForm({
             }`}
           >
             <div className="font-medium">
-              {status === 'pending' ? 'Deposit transaction pending' : status === 'success' ? 'Deposit completed' : 'Deposit failed'}
+              {status === 'pending'
+                ? 'Deposit transaction pending'
+                : status === 'success'
+                  ? 'Deposit completed'
+                  : 'Deposit failed'}
             </div>
             {statusMessage ? <div className="mt-1 text-xs opacity-90">{statusMessage}</div> : null}
             {transactionHash ? (
-              <div className="mt-1 text-xs opacity-80">Tx: {shortenAddress(transactionHash, 8)}</div>
+              <div className="mt-1 text-xs opacity-80">
+                Tx: {shortenAddress(transactionHash, 8)}
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -99,10 +106,10 @@ export default function DepositForm({
         <button
           type="submit"
           disabled={shouldDisableSubmit}
-          aria-label={isSubmitting ? "Submitting deposit" : "Deposit tokens"}
+          aria-label={isSubmitting ? 'Submitting deposit' : 'Deposit tokens'}
           className="w-full rounded-xl bg-axion-500 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-axion-500/20 transition hover:bg-axion-400 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {isSubmitting ? "Submitting..." : "Deposit"}
+          {isSubmitting ? 'Submitting...' : 'Deposit'}
         </button>
       </form>
     </section>

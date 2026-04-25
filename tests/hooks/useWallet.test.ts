@@ -1,19 +1,20 @@
-import React, { type ReactNode } from "react";
-import { act, renderHook } from "@testing-library/react";
+import React, { type ReactNode } from 'react';
+import { act, renderHook } from '@testing-library/react';
 
-import { useWallet } from "@/hooks/useWallet";
+import { useWallet } from '@/hooks/useWallet';
 
-jest.mock("@stellar/freighter-api", () => ({
+jest.mock('@stellar/freighter-api', () => ({
   isConnected: jest.fn(async () => true),
   isAllowed: jest.fn(async () => true),
   setAllowed: jest.fn(async () => undefined),
-  getPublicKey: jest.fn(async () => "GCONNECTEDPUBLICKEY")
+  getPublicKey: jest.fn(async () => 'GCONNECTEDPUBLICKEY'),
 }));
 
-describe("useWallet", () => {
+describe('useWallet', () => {
   function wrapper({ children }: { children: ReactNode }) {
     try {
-      const walletContextModule = require("@/contexts/WalletContext") as {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const walletContextModule = require('@/contexts/WalletContext') as {
         WalletProvider?: ({ children }: { children: ReactNode }) => JSX.Element;
       };
 
@@ -28,22 +29,22 @@ describe("useWallet", () => {
     return React.createElement(React.Fragment, null, children);
   }
 
-  test("connect sets address", async () => {
+  test('connect sets address', async () => {
     const { result } = renderHook(() => useWallet(), { wrapper });
 
     await act(async () => {
-      await result.current.connect();
+      await result.current.connect('freighter');
     });
 
-    expect(result.current.address).toBe("GCONNECTEDPUBLICKEY");
+    expect(result.current.address).toBe('GCONNECTEDPUBLICKEY');
     expect(result.current.isConnected).toBe(true);
   });
 
-  test("disconnect clears address", async () => {
+  test('disconnect clears address', async () => {
     const { result } = renderHook(() => useWallet(), { wrapper });
 
     await act(async () => {
-      await result.current.connect();
+      await result.current.connect('freighter');
     });
 
     act(() => {

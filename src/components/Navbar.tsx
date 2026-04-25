@@ -1,16 +1,18 @@
-import Link from "next/link";
-import Image from "next/image";
-import { useMemo, useState } from "react";
+import Link from 'next/link';
+import Image from 'next/image';
+import { useMemo, useState } from 'react';
 
-import { useSidebar } from "@/hooks/useSidebar";
-import { shortenAddress } from "@/utils/contractHelpers";
-import CopyButton from "./CopyButton";
-import ThemeToggle from "./ThemeToggle";
+import { useSidebar } from '@/hooks/useSidebar';
+import { shortenAddress } from '@/utils/contractHelpers';
+import CopyButton from './CopyButton';
+import ThemeToggle from './ThemeToggle';
+
+import { WalletType } from '@/contexts/WalletContext';
 
 type NavbarProps = {
   publicKey: string | null;
   isConnecting: boolean;
-  onConnect: (walletType: any) => Promise<void>; // Updated to match WalletContext connect signature if needed, but here we usually just call it.
+  onConnect: (walletType: WalletType) => Promise<void>;
   onDisconnect: () => void;
 };
 
@@ -27,7 +29,7 @@ export default function Navbar({ publicKey, isConnecting, onConnect, onDisconnec
           <button
             type="button"
             onClick={toggleSidebar}
-            aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            aria-label={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             aria-expanded={isSidebarOpen}
             className="hidden lg:flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/30 dark:bg-slate-900/30 text-slate-600 dark:text-slate-300 transition hover:bg-slate-200/50 dark:hover:bg-slate-900/60"
           >
@@ -59,10 +61,16 @@ export default function Navbar({ publicKey, isConnecting, onConnect, onDisconnec
             </div>
           </Link>
           <nav className="hidden items-center gap-3 text-sm text-slate-600 dark:text-slate-300 sm:flex">
-            <Link href="/dashboard" className="rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-900/60">
+            <Link
+              href="/dashboard"
+              className="rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-900/60"
+            >
               Vault
             </Link>
-            <Link href="/profile" className="rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-900/60">
+            <Link
+              href="/profile"
+              className="rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-900/60"
+            >
               Profile
             </Link>
             <a
@@ -82,7 +90,7 @@ export default function Navbar({ publicKey, isConnecting, onConnect, onDisconnec
             <div className="flex items-center gap-2">
               <div className="hidden items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/30 dark:bg-slate-900/30 px-3 py-2 text-xs text-slate-700 dark:text-slate-200 sm:flex">
                 {short}
-                <CopyButton text={address} label="Copy address" size="sm" />
+                <CopyButton text={publicKey} label="Copy address" size="sm" />
               </div>
               <button
                 type="button"
@@ -98,10 +106,10 @@ export default function Navbar({ publicKey, isConnecting, onConnect, onDisconnec
               type="button"
               onClick={() => onConnect('freighter')} // Defaulting to freighter in Navbar for now, or we can add a modal later
               disabled={isConnecting}
-              aria-label={isConnecting ? "Connecting to Stellar wallet" : "Connect Stellar wallet"}
+              aria-label={isConnecting ? 'Connecting to Stellar wallet' : 'Connect Stellar wallet'}
               className="rounded-xl bg-axion-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-axion-500/20 transition hover:bg-axion-400 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isConnecting ? "Connecting..." : "Connect Wallet"}
+              {isConnecting ? 'Connecting...' : 'Connect Wallet'}
             </button>
           )}
 
@@ -109,7 +117,7 @@ export default function Navbar({ publicKey, isConnecting, onConnect, onDisconnec
           <button
             type="button"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+            aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={isMenuOpen}
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/30 dark:bg-slate-900/30 text-slate-600 dark:text-slate-300 transition hover:bg-slate-200/50 dark:hover:bg-slate-900/60 sm:hidden"
           >

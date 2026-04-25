@@ -10,7 +10,7 @@ type WithdrawFormProps = {
   isSubmitting: boolean;
   balance: string;
   onWithdraw: (amount: string) => Promise<void>;
-  status: "idle" | "pending" | "success" | "error";
+  status: 'idle' | 'pending' | 'success' | 'error';
   statusMessage?: string | null;
   transactionHash?: string | null;
 };
@@ -22,25 +22,25 @@ export default function WithdrawForm({
   onWithdraw,
   status,
   statusMessage,
-  transactionHash
+  transactionHash,
 }: WithdrawFormProps) {
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isValid, isDirty }
+    formState: { errors, isValid, isDirty },
   } = useForm<WithdrawFormData>({
     resolver: zodResolver(createWithdrawSchema(parseFloat(balance))),
     mode: 'onChange',
     defaultValues: {
-      amount: '' as any,
-    }
+      amount: '' as unknown as number,
+    },
   });
 
   const onSubmit = async (data: WithdrawFormData) => {
     try {
       await onWithdraw(data.amount.toString());
-      notify.success("Withdrawal Successful", `You have withdrawn ${data.amount} tokens.`);
+      notify.success('Withdrawal Successful', `You have withdrawn ${data.amount} tokens.`);
       reset();
     } catch (error) {
       console.error('Withdrawal error:', error);
@@ -54,7 +54,8 @@ export default function WithdrawForm({
       <div className="text-sm font-semibold text-text-primary">Withdraw</div>
       <div className="mt-1 text-xs text-text-muted">Withdraw tokens from the Axionvera vault.</div>
       <div className="mt-3 rounded-xl border border-border-primary bg-background-secondary/20 px-4 py-3 text-xs text-text-secondary">
-        Available balance: <span className="font-medium text-text-primary">{formatAmount(balance)}</span>
+        Available balance:{' '}
+        <span className="font-medium text-text-primary">{formatAmount(balance)}</span>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4">
@@ -82,11 +83,17 @@ export default function WithdrawForm({
             }`}
           >
             <div className="font-medium">
-              {status === 'pending' ? 'Withdrawal transaction pending' : status === 'success' ? 'Withdrawal completed' : 'Withdrawal failed'}
+              {status === 'pending'
+                ? 'Withdrawal transaction pending'
+                : status === 'success'
+                  ? 'Withdrawal completed'
+                  : 'Withdrawal failed'}
             </div>
             {statusMessage ? <div className="mt-1 text-xs opacity-90">{statusMessage}</div> : null}
             {transactionHash ? (
-              <div className="mt-1 text-xs opacity-80">Tx: {shortenAddress(transactionHash, 8)}</div>
+              <div className="mt-1 text-xs opacity-80">
+                Tx: {shortenAddress(transactionHash, 8)}
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -94,10 +101,10 @@ export default function WithdrawForm({
         <button
           type="submit"
           disabled={shouldDisableSubmit}
-          aria-label={isSubmitting ? "Submitting withdrawal" : "Withdraw tokens"}
+          aria-label={isSubmitting ? 'Submitting withdrawal' : 'Withdraw tokens'}
           className="w-full rounded-xl border border-border-primary bg-background-secondary/30 px-4 py-3 text-sm font-medium text-text-primary transition hover:bg-background-secondary/60 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSubmitting ? "Submitting..." : "Withdraw"}
+          {isSubmitting ? 'Submitting...' : 'Withdraw'}
         </button>
       </form>
     </section>

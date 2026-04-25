@@ -9,6 +9,7 @@ describe('formatters utility', () => {
 
     it('should return an empty string for undefined/null input', () => {
       expect(truncateAddress(undefined)).toBe('');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect(truncateAddress(null as any)).toBe('');
       expect(truncateAddress('')).toBe('');
     });
@@ -32,7 +33,7 @@ describe('formatters utility', () => {
       // chars = 6, threshold = 15
       const exact = '123456789012345';
       expect(truncateAddress(exact, 6)).toBe(exact);
-      
+
       const oneMore = '1234567890123456';
       expect(truncateAddress(oneMore, 6)).toBe('123456...123456');
     });
@@ -61,7 +62,7 @@ describe('formatters utility', () => {
       // 100,000,000,000.1234567 XLM
       const massiveStroops = '1000000000001234567';
       expect(formatBalance(massiveStroops)).toBe('100,000,000,000.1234567');
-      
+
       const evenLarger = 1000000000000000000000000n; // 10^23 Stroops = 10^16 XLM
       expect(formatBalance(evenLarger)).toBe('100,000,000,000,000,000');
     });
