@@ -1,6 +1,6 @@
 import type { AppProps } from "next/app";
-import { Toaster } from 'sonner';
-import { ThemeProvider as NextThemeProvider } from 'next-themes';
+import { Toaster } from "sonner";
+import { ThemeProvider as NextThemeProvider } from "next-themes";
 
 import "@/styles/globals.css";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -23,7 +23,7 @@ export default function App({ Component, pageProps }: AppProps) {
     // fontFamily tokens and any CSS that references them directly.
     <div className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <ErrorBoundary>
-        <ThemeProvider>
+        <AppThemeProvider>
           <WalletProvider>
             <Component {...pageProps} />
             <ThemeToggle />
@@ -34,7 +34,7 @@ export default function App({ Component, pageProps }: AppProps) {
               duration={4000}
             />
           </WalletProvider>
-        </ThemeProvider>
+        </AppThemeProvider>
       </ErrorBoundary>
     </div>
   );

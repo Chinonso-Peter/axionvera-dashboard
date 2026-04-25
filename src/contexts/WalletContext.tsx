@@ -79,7 +79,6 @@ function clearWalletCookie() {
   document.cookie = "hasWallet=; path=/; max-age=0";
 }
 
-
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<WalletState>({
     address: null,
@@ -207,10 +206,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const connect = useCallback(async (walletType: WalletType) => {
+    console.log("Connecting ...", walletType);
+    let connecttionType = { walletType, walletInstalled: false };
     setState((s) => ({ ...s, isConnecting: true, error: null }));
     try {
-      if (typeof window === "undefined")
+      if (typeof window === "undefined") {
+        console.log("gip");
         throw new Error("Wallet is only available in the browser.");
+      }
 
       if (walletType === "freighter") {
         const freighter = await loadFreighter();
@@ -219,9 +222,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           throw new Error(
             "Freighter wallet not detected. Please install the Freighter extension.",
           );
+        connecttionType.walletInstalled = true;
         await freighter.setAllowed();
-        address = await freighter.getPublicKey();
+        const address = await freighter.getPublicKey();
         const network = await freighter.getNetwork();
+        console.log(address);
 
         const networkMap: Record<string, StellarNetwork> = {
           PUBLIC: "mainnet",
@@ -239,6 +244,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           error: null,
           walletType: "freighter",
         });
+
+        console.log(connected);
       } else if (walletType === "albedo") {
         const albedo = await loadAlbedo();
         const result = await albedo.publicKey({});
@@ -255,9 +262,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         });
       }
 
-      setState({ address, network: mappedNetwork, balance: null, isConnecting: false, error: null, walletType });
-      notify.success('Wallet Connected', `Successfully connected to ${walletType} wallet.`);
+      // setState({
+      //   address,
+      //   network: mappedNetwork,
+      //   balance: null,
+      //   isConnecting: false,
+      //   error: null,
+      //   walletType,
+      // });
+      // notify.success(
+      //   "Wallet Connected",
+      //   `Successfully connected to ${walletType} wallet.`,
+      // );
+      return connecttionType;
     } catch (e) {
+      console.log(e);
       const message =
         e instanceof Error ? e.message : "Failed to connect wallet.";
       setState((s) => ({
@@ -267,6 +286,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         error: message,
         walletType: null,
       }));
+      return connecttionType;
     }
   }, []);
 
@@ -282,6 +302,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       error: null,
       walletType: null,
     }));
+    return state;
   }, []);
 
   const value = useMemo<WalletContextType>(
