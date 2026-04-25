@@ -70,6 +70,15 @@ async function fetchBalance(
   }
 }
 
+function setWalletCookie() {
+  document.cookie = "hasWallet=true; path=/; SameSite=Lax";
+}
+
+function clearWalletCookie() {
+  document.cookie = "hasWallet=; path=/; max-age=0";
+}
+
+
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<WalletState>({
     address: null,
