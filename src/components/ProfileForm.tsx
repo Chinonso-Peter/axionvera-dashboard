@@ -77,7 +77,7 @@ export default function ProfileForm({ initialData, onSubmit }: ProfileFormProps)
         />
 
         <div>
-          <label htmlFor="bio" className="block text-xs font-medium text-text-secondary mb-2">
+          <label htmlFor="bio" className={`block text-xs font-medium mb-2 ${bioProps.error?.hasError && bioProps.touched ? 'text-red-500 dark:text-red-400' : 'text-text-secondary'}`}>
             Bio
           </label>
           <textarea
@@ -86,24 +86,30 @@ export default function ProfileForm({ initialData, onSubmit }: ProfileFormProps)
             onChange={(e) => bioProps.onChange(e.target.value)}
             onBlur={bioProps.onBlur}
             rows={4}
+            aria-invalid={bioProps.error?.hasError && bioProps.touched ? "true" : "false"}
+            aria-describedby="bio-helper bio-error"
             className={`
-              w-full rounded-xl border px-4 py-3 text-sm text-text-primary outline-none ring-0 
-              placeholder:text-slate-500 transition-colors resize-none
+              w-full rounded-xl border px-4 py-3 text-sm text-text-primary 
+              transition-all duration-200 resize-none
+              focus:outline-none focus:ring-2 focus:ring-axion-500/50 focus:border-axion-500
+              placeholder:text-text-muted
               ${bioProps.error?.hasError && bioProps.touched
-                ? 'border-red-500/70 bg-red-500/5 focus:border-red-500' 
-                : 'border-border-primary bg-background-secondary/30 focus:border-axion-500/70'
+                ? 'border-red-500/70 bg-red-500/5 focus:border-red-500 focus:ring-red-500/20' 
+                : 'border-border-primary bg-background-secondary/30'
               }
             `}
             placeholder="Tell us about yourself..."
             maxLength={500}
           />
           <div className="mt-1 flex justify-between">
-            {bioProps.error?.hasError && bioProps.touched ? (
-              <p className="text-xs text-red-500 dark:text-red-400">{bioProps.error.message}</p>
-            ) : (
-              <p className="text-xs text-slate-400 dark:text-slate-500 transition-colors">Optional: Brief description about yourself</p>
-            )}
-            <p className="text-xs text-slate-500">
+            <div id="bio-error">
+              {bioProps.error?.hasError && bioProps.touched ? (
+                <p className="text-xs text-red-500 dark:text-red-400 font-medium">{bioProps.error.message}</p>
+              ) : (
+                <p id="bio-helper" className="text-xs text-text-muted">Optional: Brief description about yourself</p>
+              )}
+            </div>
+            <p className="text-xs text-text-muted" aria-hidden="true">
               {(bioProps.value || '').length}/500
             </p>
           </div>
@@ -131,7 +137,8 @@ export default function ProfileForm({ initialData, onSubmit }: ProfileFormProps)
         <div className="flex justify-end gap-3 pt-4 border-t border-border-primary">
           <button
             type="button"
-            className="px-4 py-2 text-sm font-medium text-text-secondary transition hover:text-text-primary"
+            aria-label="Cancel profile changes"
+            className="px-4 py-2 text-sm font-medium text-text-secondary transition hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-axion-500/50 rounded-lg"
             onClick={() => window.history.back()}
           >
             Cancel
@@ -139,7 +146,8 @@ export default function ProfileForm({ initialData, onSubmit }: ProfileFormProps)
           <button
             type="submit"
             disabled={shouldDisableSubmit()}
-            className="rounded-xl bg-axion-500 px-6 py-2 text-sm font-medium text-white shadow-lg shadow-axion-500/20 transition hover:bg-axion-400 disabled:cursor-not-allowed disabled:opacity-70"
+            aria-label={isSubmitting ? 'Saving profile changes' : 'Save profile changes'}
+            className="rounded-xl bg-axion-500 px-6 py-2 text-sm font-medium text-white shadow-lg shadow-axion-500/20 transition hover:bg-axion-400 disabled:cursor-not-allowed disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-axion-500/50"
           >
             {isSubmitting ? 'Saving...' : 'Save Changes'}
           </button>
