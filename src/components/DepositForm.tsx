@@ -1,15 +1,12 @@
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormInput } from './FormInput';
-import TransactionSuccess from './TransactionSuccess';
-import { useFormValidation } from '@/hooks/useFormValidation';
 import { depositSchema, DepositFormData } from '@/utils/validation';
 import { notify } from '@/utils/notifications';
-import { shortenAddress, type TransactionSimulation } from '@/utils/contractHelpers';
-import { ConfirmTransactionModal } from './ConfirmTransactionModal';
+import { shortenAddress } from '@/utils/contractHelpers';
 import { AppTooltip } from './AppTooltip';
 import { GLOSSARY } from '@/utils/glossary';
+import type { VaultAsset } from '@/utils/vaultAssets';
 
 type DepositFormProps = {
   isConnected: boolean;
@@ -18,8 +15,10 @@ type DepositFormProps = {
   status: "idle" | "pending" | "success" | "error";
   statusMessage?: string | null;
   transactionHash?: string | null;
-  walletBalance?: number | null;
-  onSimulate?: (amount: string) => Promise<TransactionSimulation>;
+  walletBalance?: string | null;
+  selectedAsset: VaultAsset;
+  assets: VaultAsset[];
+  onAssetChange: (assetId: string) => void;
 };
 
 const NETWORK_FEE_RESERVE = 0.1;
@@ -32,127 +31,140 @@ export default function DepositForm({
   statusMessage,
   transactionHash,
   walletBalance,
-  onSimulate,
+  selectedAsset,
+  assets,
+  onAssetChange,
 }: DepositFormProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [simulationData, setSimulationData] = useState<TransactionSimulation | null>(null);
-  const [pendingAmount, setPendingAmount] = useState<string>('');
-  const [isSimulating, setIsSimulating] = useState(false);
   const {
     register,
     handleSubmit,
     reset,
-  } = useFormValidation({
-    schema: depositSchema,
-    initialValues,
-    onSubmit: async (data) => {
-      setDepositAmount(data.amount);
-      await onDeposit(data.amount);
-    },
+    setValue,
+    formState: { isValid, isDirty }
+  } = useForm<DepositFormData>({
+    resolver: zodResolver(depositSchema),
+    mode: 'onChange',
+    defaultValues: {
+      amount: '' as any,
+    }
   });
 
-  // Show success modal when status changes to success and we have a hash
-  useEffect(() => {
-    if (status === 'success' && transactionHash) {
-      setShowSuccessModal(true);
-      notify.success("Deposit Successful", `You have deposited ${depositAmount} tokens.`);
+  const spendableBalance =
+    walletBalance !== undefined && walletBalance !== null
+      ? Math.max(0, Number(walletBalance) - (selectedAsset.isNative ? NETWORK_FEE_RESERVE : 0))
+      : null;
+
+  function handleMax() {
+    if (spendableBalance !== null && spendableBalance > 0) {
+      setValue('amount', spendableBalance as any, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
     }
-  }, [status, transactionHash, depositAmount]);
+  }
 
   const onSubmit = async (data: DepositFormData) => {
-    const amountStr = data.amount.toString();
-    if (onSimulate) {
-      setPendingAmount(amountStr);
-      setIsModalOpen(true);
-      setSimulationData(null);
-      setIsSimulating(true);
-      try {
-        const sim = await onSimulate(amountStr);
-        setSimulationData(sim);
-      } catch (error) {
-        console.error('Simulation error:', error);
-        setIsModalOpen(false);
-        notify.error("Simulation Failed", "Could not simulate transaction.");
-      } finally {
-        setIsSimulating(false);
-      }
-    } else {
-      executeDeposit(amountStr);
-    }
-  };
-
-  const executeDeposit = async (amount: string) => {
     try {
-      await onDeposit(amount);
-      notify.success("Deposit Successful", `You have deposited ${amount} tokens.`);
+      await onDeposit(data.amount.toString());
+      notify.success("Deposit Successful", `You have deposited ${data.amount} ${selectedAsset.symbol}.`);
       reset();
-      setIsModalOpen(false);
     } catch (error) {
       console.error('Deposit error:', error);
-      setIsModalOpen(false);
     }
   };
 
-  const handleConfirm = () => {
-    if (pendingAmount) {
-      executeDeposit(pendingAmount);
-    }
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSimulationData(null);
-  };
-
-  const shouldDisableSubmit = !isConnected || !isValid || !isDirty || isSubmitting || isSimulating;
+  const shouldDisableSubmit = !isConnected || !isValid || !isDirty || isSubmitting;
 
   return (
-    <>
-      <section className="rounded-2xl border border-border-primary bg-background-primary/30 p-6">
-        <div className="text-sm font-semibold text-text-primary">Deposit</div>
-        <div className="mt-1 text-xs text-text-muted">Deposit tokens into the Axionvera vault.</div>
+    <section className="rounded-2xl border border-border-primary bg-background-primary/30 p-6">
+      <div className="text-sm font-semibold text-text-primary">Deposit</div>
+      <div className="mt-1 text-xs text-text-muted">Deposit tokens into the Axionvera vault.</div>
 
-        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="mt-5 space-y-4">
-          <FormInput
-            {...amountProps}
-            id="deposit-amount"
-            inputMode="decimal"
-            placeholder="0.0"
-            label="Amount"
-            required
-            helperText="Enter amount between 0.0001 and 10,000"
-          />
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4">
+        <div className="flex flex-col gap-2">
+          <label htmlFor="deposit-asset" className="text-xs font-medium text-text-secondary">
+            Asset
+          </label>
+          <select
+            id="deposit-asset"
+            value={selectedAsset.id}
+            onChange={(event) => onAssetChange(event.target.value)}
+            disabled={assets.length <= 1}
+            className="w-full rounded-xl border border-border-primary bg-background-secondary/30 px-4 py-3 text-sm text-text-primary transition focus:border-axion-500 focus:outline-none focus:ring-2 focus:ring-axion-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {assets.map((asset) => (
+              <option key={asset.id} value={asset.id}>
+                {asset.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          {status !== 'idle' && status !== 'success' ? (
-            <div
-              role="status"
-              aria-live="polite"
-              className={`rounded-xl border px-4 py-3 text-sm ${
-                status === 'error'
+        <div className="flex items-center justify-between text-xs text-text-muted">
+          <span>Available Balance</span>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-text-primary">
+              {spendableBalance !== null ? `${spendableBalance.toFixed(4)} ${selectedAsset.symbol}` : '—'}
+            </span>
+            <button
+              type="button"
+              onClick={handleMax}
+              disabled={!isConnected || spendableBalance === null || spendableBalance <= 0}
+              className="rounded-md bg-axion-500/10 px-2 py-0.5 text-xs font-semibold text-axion-400 transition hover:bg-axion-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Max
+            </button>
+          </div>
+        </div>
+
+        <FormInput
+          {...register('amount')}
+          id="deposit-amount"
+          inputMode="decimal"
+          placeholder="0.0"
+          label="Amount"
+          required
+          helperText={
+            <span>
+              Enter amount between 0.0001 and 10,000{' '}
+              <AppTooltip content={GLOSSARY.slippage}>
+                <span className="cursor-help font-semibold uppercase tracking-wider text-axion-500 underline decoration-dotted decoration-axion-500/50 underline-offset-2 transition-colors hover:text-axion-400">
+                  Slippage
+                </span>
+              </AppTooltip>
+            </span>
+          }
+        />
+
+        {status !== 'idle' ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className={`rounded-xl border px-4 py-3 text-sm ${
+              status === 'success'
+                ? 'border-emerald-900/50 bg-emerald-950/30 text-emerald-200'
+                : status === 'error'
                   ? 'border-rose-900/50 bg-rose-950/30 text-rose-200'
                   : 'border-border-primary bg-background-secondary/30 text-text-primary'
-              }`}
-            >
-              <div className="font-medium">
-                {status === 'pending' ? 'Deposit transaction pending' : 'Deposit failed'}
-              </div>
-              {statusMessage ? <div className="mt-1 text-xs opacity-90">{statusMessage}</div> : null}
-              {transactionHash && status === 'error' ? (
-                <div className="mt-1 text-xs opacity-80">Tx: {shortenAddress(transactionHash, 8)}</div>
-              ) : null}
-            </div>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={!isConnected || shouldDisableSubmit() || isSubmitting}
-            aria-label={isSubmitting ? "Submitting deposit" : "Deposit tokens"}
-            className="w-full rounded-xl bg-axion-500 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-axion-500/20 transition hover:bg-axion-400 disabled:cursor-not-allowed disabled:opacity-70"
+            }`}
           >
-            {isSubmitting ? "Submitting..." : "Deposit"}
-          </button>
-        </form>
-      </section>
+            <div className="font-medium">
+              {status === 'pending'
+                ? 'Deposit transaction pending'
+                : status === 'success'
+                  ? 'Deposit completed'
+                  : 'Deposit failed'}
+            </div>
+            {statusMessage ? (
+              <div className="mt-1 text-xs opacity-90">{statusMessage}</div>
+            ) : null}
+            {transactionHash ? (
+              <div className="mt-1 text-xs opacity-80">
+                Tx: {shortenAddress(transactionHash, 8)}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <button
           type="submit"
@@ -183,23 +195,13 @@ export default function DepositForm({
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                 />
               </svg>
-              Depositing...
+              Depositing {selectedAsset.symbol}...
             </>
           ) : (
             "Deposit"
           )}
         </button>
       </form>
-
-      <ConfirmTransactionModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onConfirm={handleConfirm}
-        action="deposit"
-        amount={pendingAmount}
-        simulation={simulationData}
-        isConfirming={isSubmitting}
-      />
     </section>
   );
 }

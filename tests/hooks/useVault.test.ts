@@ -2,10 +2,13 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 
 import { useVault } from "@/hooks/useVault";
 import type { AxionveraVaultSdk } from "@/utils/contractHelpers";
+import { getDefaultVaultAsset } from "@/utils/vaultAssets";
+
+const defaultAsset = getDefaultVaultAsset();
 
 describe("useVault", () => {
   test("deposit updates balance and history", async () => {
-    const { result } = renderHook(() => useVault({ walletAddress: "GTESTWALLETADDRESS" }));
+    const { result } = renderHook(() => useVault({ walletAddress: "GTESTWALLETADDRESS", asset: defaultAsset }));
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.balance).toBe("0");
@@ -23,7 +26,7 @@ describe("useVault", () => {
   });
 
   test("withdraw reduces balance", async () => {
-    const { result } = renderHook(() => useVault({ walletAddress: "GTESTWALLETADDRESS_2" }));
+    const { result } = renderHook(() => useVault({ walletAddress: "GTESTWALLETADDRESS_2", asset: defaultAsset }));
 
     await act(async () => {
       await result.current.deposit("5");
@@ -42,7 +45,7 @@ describe("useVault", () => {
   });
 
   test("withdraw prevents invalid amounts above balance", async () => {
-    const { result } = renderHook(() => useVault({ walletAddress: "GTESTWALLETADDRESS_3" }));
+    const { result } = renderHook(() => useVault({ walletAddress: "GTESTWALLETADDRESS_3", asset: defaultAsset }));
 
     await act(async () => {
       await result.current.deposit("5");
@@ -70,7 +73,7 @@ describe("useVault", () => {
     };
 
     const { result } = renderHook(() =>
-      useVault({ walletAddress: "GTESTWALLETADDRESS_4", sdk: failingSdk })
+      useVault({ walletAddress: "GTESTWALLETADDRESS_4", asset: defaultAsset, sdk: failingSdk })
     );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -84,5 +87,51 @@ describe("useVault", () => {
     expect(result.current.error).toMatch(/simulated deposit failure/i);
     expect(result.current.transactions[0]?.status).toBe("failed");
     expect(result.current.transactions[0]?.type).toBe("deposit");
+  });
+
+  test("deposit forwards the selected asset contract id", async () => {
+    const customAsset = {
+      id: "usdc",
+      symbol: "USDC",
+      label: "USDC",
+      tokenContractId: "C_TOKEN_123",
+      isNative: false
+    };
+
+    const deposit = jest.fn(async () => ({
+      id: "deposit-custom-1",
+      type: "deposit" as const,
+      amount: "7",
+      status: "success" as const,
+      createdAt: new Date().toISOString(),
+      assetId: customAsset.id,
+      assetSymbol: customAsset.symbol
+    }));
+
+    const sdk: AxionveraVaultSdk = {
+      getBalances: async () => ({ balance: "0", rewards: "0" }),
+      getTransactions: async () => [],
+      deposit,
+      withdraw: async () => ({ id: "withdraw-1", type: "withdraw", amount: "1", status: "success", createdAt: new Date().toISOString() }),
+      claimRewards: async () => ({ id: "claim-1", type: "claim", amount: "0", status: "success", createdAt: new Date().toISOString() })
+    };
+
+    const { result } = renderHook(() =>
+      useVault({ walletAddress: "GTESTWALLETADDRESS_5", asset: customAsset, sdk })
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.deposit("7");
+    });
+
+    expect(deposit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assetId: "usdc",
+        assetSymbol: "USDC",
+        tokenContractId: "C_TOKEN_123"
+      })
+    );
   });
 });

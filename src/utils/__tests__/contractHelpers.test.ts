@@ -1,18 +1,19 @@
-import { 
-  shortenAddress, 
-  formatAmount, 
-  parsePositiveAmount, 
-  createAxionveraVaultSdk 
+import {
+  shortenAddress,
+  formatAmount,
+  parsePositiveAmount,
+  createAxionveraVaultSdk
 } from '../contractHelpers';
 
-// Mock apiResilience to bypass sleep/timeout logic
+const ASSET_ID = 'native-xlm';
+const ASSET_SYMBOL = 'XLM';
+
 jest.mock('../apiResilience', () => ({
   withApiResilience: (fn: any) => fn,
   withErrorHandling: (fn: any) => fn,
   safeApiCall: async (fn: any) => ({ data: await fn() }),
 }));
 
-// Mock networkConfig to ensure consistent storage keys
 jest.mock('../networkConfig', () => ({
   NETWORK: 'testnet',
 }));
@@ -58,15 +59,12 @@ describe('contractHelpers utility', () => {
     let sdk: any;
 
     beforeAll(() => {
-      // Provide a stable UUID so hash values are deterministic in tests.
       (global as any).crypto = {
         randomUUID: () => 'test-uuid'
       };
     });
 
     beforeEach(() => {
-      // Use the real jsdom localStorage (same object contractHelpers uses)
-      // and wipe it clean between tests.
       localStorage.clear();
       sdk = createAxionveraVaultSdk();
     });
@@ -76,56 +74,89 @@ describe('contractHelpers utility', () => {
     });
 
     it('should get balances (mocked)', async () => {
-      const balances = await sdk.getBalances({ walletAddress: 'G_BAL', network: 'testnet' });
+      const balances = await sdk.getBalances({ walletAddress: 'G_BAL', network: 'testnet', assetId: ASSET_ID });
       expect(balances).toEqual({ balance: '0', rewards: '0' });
     });
 
     it('should deposit (mocked)', async () => {
-      const tx = await sdk.deposit({ walletAddress: 'G_DEP', network: 'testnet', amount: '100' });
+      const tx = await sdk.deposit({
+        walletAddress: 'G_DEP',
+        network: 'testnet',
+        amount: '100',
+        assetId: ASSET_ID,
+        assetSymbol: ASSET_SYMBOL,
+        tokenContractId: null
+      });
       expect(tx.status).toBe('success');
       expect(tx.amount).toBe('100');
 
-      const balances = await sdk.getBalances({ walletAddress: 'G_DEP', network: 'testnet' });
+      const balances = await sdk.getBalances({ walletAddress: 'G_DEP', network: 'testnet', assetId: ASSET_ID });
       expect(balances.balance).toBe('100');
     });
 
     it('should withdraw (mocked)', async () => {
-      // Seed initial state via the real localStorage so contractHelpers reads it.
-      localStorage.setItem(
-        'axionvera:vault:testnet:G_WIT',
-        JSON.stringify({ balance: '100', rewards: '0', txs: [] })
-      );
+      await sdk.deposit({
+        walletAddress: 'G_WIT',
+        network: 'testnet',
+        amount: '100',
+        assetId: ASSET_ID,
+        assetSymbol: ASSET_SYMBOL,
+        tokenContractId: null
+      });
 
-      const tx = await sdk.withdraw({ walletAddress: 'G_WIT', network: 'testnet', amount: '40' });
+      const tx = await sdk.withdraw({
+        walletAddress: 'G_WIT',
+        network: 'testnet',
+        amount: '40',
+        assetId: ASSET_ID,
+        assetSymbol: ASSET_SYMBOL,
+        tokenContractId: null
+      });
       expect(tx.status).toBe('success');
 
-      const balances = await sdk.getBalances({ walletAddress: 'G_WIT', network: 'testnet' });
+      const balances = await sdk.getBalances({ walletAddress: 'G_WIT', network: 'testnet', assetId: ASSET_ID });
       expect(balances.balance).toBe('60');
     });
 
     it('should claim rewards (mocked)', async () => {
-      localStorage.setItem(
-        'axionvera:vault:testnet:G_CLA',
-        JSON.stringify({ balance: '100', rewards: '10', txs: [] })
-      );
+      await sdk.deposit({
+        walletAddress: 'G_CLA',
+        network: 'testnet',
+        amount: '100',
+        assetId: ASSET_ID,
+        assetSymbol: ASSET_SYMBOL,
+        tokenContractId: null
+      });
 
-      const tx = await sdk.claimRewards({ walletAddress: 'G_CLA', network: 'testnet' });
+      const tx = await sdk.claimRewards({
+        walletAddress: 'G_CLA',
+        network: 'testnet',
+        assetId: ASSET_ID,
+        assetSymbol: ASSET_SYMBOL
+      });
       expect(tx.status).toBe('success');
 
-      const balances = await sdk.getBalances({ walletAddress: 'G_CLA', network: 'testnet' });
-      expect(balances.balance).toBe('1010'); // 1000 deposit + 10 rewards
+      const balances = await sdk.getBalances({ walletAddress: 'G_CLA', network: 'testnet', assetId: ASSET_ID });
+      expect(balances.balance).toBe('101');
       expect(balances.rewards).toBe('0');
     });
 
     it('should get transactions (mocked)', async () => {
-      await sdk.deposit({ walletAddress: 'G_TXS', network: 'testnet', amount: '100' });
-      const txs = await sdk.getTransactions({ walletAddress: 'G_TXS', network: 'testnet' });
+      await sdk.deposit({
+        walletAddress: 'G_TXS',
+        network: 'testnet',
+        amount: '100',
+        assetId: ASSET_ID,
+        assetSymbol: ASSET_SYMBOL,
+        tokenContractId: null
+      });
+      const txs = await sdk.getTransactions({ walletAddress: 'G_TXS', network: 'testnet', assetId: ASSET_ID });
       expect(txs.length).toBeGreaterThan(0);
     });
 
     it('should handle malformed storage gracefully', async () => {
       localStorage.setItem('axionvera:vault:testnet:G_MAL', 'invalid-json');
-      const balances = await sdk.getBalances({ walletAddress: 'G_MAL', network: 'testnet' });
+      const balances = await sdk.getBalances({ walletAddress: 'G_MAL', network: 'testnet', assetId: ASSET_ID });
       expect(balances.balance).toBe('0');
     });
   });

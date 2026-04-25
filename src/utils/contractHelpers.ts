@@ -1,4 +1,4 @@
-﻿import type { StellarNetwork } from "@/utils/networkConfig";
+import type { StellarNetwork } from "@/utils/networkConfig";
 import { withApiResilience, withErrorHandling, safeApiCall, ApiCallOptions } from "./apiResilience";
 
 export type VaultTxType = "deposit" | "withdraw" | "claim";
@@ -12,6 +12,8 @@ export type VaultTx = {
   status: VaultTxStatus;
   createdAt: string;
   hash?: string;
+  assetId?: string;
+  assetSymbol?: string;
 };
 
 export type VaultBalances = {
@@ -28,12 +30,20 @@ export type TransactionSimulation = {
 };
 
 export type AxionveraVaultSdk = {
-  getBalances: (args: { walletAddress: string; network: StellarNetwork }, options?: ApiCallOptions) => Promise<VaultBalances>;
-  getTransactions: (args: { walletAddress: string; network: StellarNetwork }, options?: ApiCallOptions) => Promise<VaultTx[]>;
-  deposit: (args: { walletAddress: string; network: StellarNetwork; amount: string }, options?: ApiCallOptions) => Promise<VaultTx>;
-  withdraw: (args: { walletAddress: string; network: StellarNetwork; amount: string }, options?: ApiCallOptions) => Promise<VaultTx>;
-  claimRewards: (args: { walletAddress: string; network: StellarNetwork }, options?: ApiCallOptions) => Promise<VaultTx>;
-  simulateTransaction: (args: { walletAddress: string; network: StellarNetwork; type: VaultTxType; amount?: string }, options?: ApiCallOptions) => Promise<TransactionSimulation>;
+  getBalances: (args: { walletAddress: string; network: StellarNetwork; assetId?: string }, options?: ApiCallOptions) => Promise<VaultBalances>;
+  getTransactions: (args: { walletAddress: string; network: StellarNetwork; assetId?: string }, options?: ApiCallOptions) => Promise<VaultTx[]>;
+  deposit: (
+    args: { walletAddress: string; network: StellarNetwork; amount: string; assetId?: string; assetSymbol?: string; tokenContractId?: string | null },
+    options?: ApiCallOptions
+  ) => Promise<VaultTx>;
+  withdraw: (
+    args: { walletAddress: string; network: StellarNetwork; amount: string; assetId?: string; assetSymbol?: string; tokenContractId?: string | null },
+    options?: ApiCallOptions
+  ) => Promise<VaultTx>;
+  claimRewards: (
+    args: { walletAddress: string; network: StellarNetwork; assetId?: string; assetSymbol?: string },
+    options?: ApiCallOptions
+  ) => Promise<VaultTx>;
 };
 
 export function shortenAddress(address: string, chars = 6) {
@@ -60,8 +70,8 @@ function getStorageKey(walletAddress: string, network: StellarNetwork) {
 }
 
 type StoredVault = {
-  balance: string;
-  rewards: string;
+  balances: Record<string, string>;
+  rewards: Record<string, string>;
   txs: VaultTx[];
 };
 
@@ -75,18 +85,30 @@ function createId() {
 }
 
 function loadVault(walletAddress: string, network: StellarNetwork): StoredVault {
-  if (typeof window === "undefined") return { balance: "0", rewards: "0", txs: [] };
+  if (typeof window === "undefined") return { balances: {}, rewards: {}, txs: [] };
   const raw = window.localStorage.getItem(getStorageKey(walletAddress, network));
-  if (!raw) return { balance: "0", rewards: "0", txs: [] };
+  if (!raw) return { balances: {}, rewards: {}, txs: [] };
   try {
-    const parsed = JSON.parse(raw) as StoredVault;
+    const parsed = JSON.parse(raw) as StoredVault & { balance?: string; rewards?: string };
+    const legacyBalance = typeof parsed.balance === "string" ? parsed.balance : undefined;
+    const legacyRewards = typeof parsed.rewards === "string" ? parsed.rewards : undefined;
     return {
-      balance: typeof parsed.balance === "string" ? parsed.balance : "0",
-      rewards: typeof parsed.rewards === "string" ? parsed.rewards : "0",
+      balances:
+        parsed.balances && typeof parsed.balances === "object"
+          ? parsed.balances
+          : legacyBalance
+            ? { "native-xlm": legacyBalance }
+            : {},
+      rewards:
+        parsed.rewards && typeof parsed.rewards === "object"
+          ? parsed.rewards
+          : legacyRewards
+            ? { "native-xlm": legacyRewards }
+            : {},
       txs: Array.isArray(parsed.txs) ? parsed.txs : []
     };
   } catch {
-    return { balance: "0", rewards: "0", txs: [] };
+    return { balances: {}, rewards: {}, txs: [] };
   }
 }
 
@@ -99,26 +121,56 @@ function toFixedString(n: number) {
   return n.toString();
 }
 
+function resolveAssetId(assetId?: string) {
+  return assetId ?? "native-xlm";
+}
+
+function resolveAssetSymbol(assetId?: string, assetSymbol?: string) {
+  if (assetSymbol) return assetSymbol;
+  return resolveAssetId(assetId) === "native-xlm" ? "XLM" : resolveAssetId(assetId).toUpperCase();
+}
+
 export function createAxionveraVaultSdk(): AxionveraVaultSdk {
-  // Base implementations without resilience
   const baseSdk = {
-    async getBalances({ walletAddress, network }: { walletAddress: string; network: StellarNetwork }) {
+    async getBalances({ walletAddress, network, assetId }: { walletAddress: string; network: StellarNetwork; assetId?: string }) {
       await sleep(150);
       const vault = loadVault(walletAddress, network);
-      return { balance: vault.balance, rewards: vault.rewards };
+      const resolvedAssetId = resolveAssetId(assetId);
+      return {
+        balance: vault.balances[resolvedAssetId] ?? "0",
+        rewards: vault.rewards[resolvedAssetId] ?? "0"
+      };
     },
-    async getTransactions({ walletAddress, network }: { walletAddress: string; network: StellarNetwork }) {
+    async getTransactions({ walletAddress, network, assetId }: { walletAddress: string; network: StellarNetwork; assetId?: string }) {
       await sleep(150);
       const vault = loadVault(walletAddress, network);
-      return vault.txs;
+      const resolvedAssetId = resolveAssetId(assetId);
+      return vault.txs.filter((tx) => (tx.assetId ?? "native-xlm") === resolvedAssetId);
     },
-    async deposit({ walletAddress, network, amount }: { walletAddress: string; network: StellarNetwork; amount: string }) {
+    async deposit({
+      walletAddress,
+      network,
+      amount,
+      assetId,
+      assetSymbol
+    }: {
+      walletAddress: string;
+      network: StellarNetwork;
+      amount: string;
+      assetId?: string;
+      assetSymbol?: string;
+      tokenContractId?: string | null;
+    }) {
+      const resolvedAssetId = resolveAssetId(assetId);
+      const resolvedAssetSymbol = resolveAssetSymbol(assetId, assetSymbol);
       const tx: VaultTx = {
         id: createId(),
         type: "deposit",
         amount,
         status: "pending",
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        assetId: resolvedAssetId,
+        assetSymbol: resolvedAssetSymbol
       };
 
       const vault = loadVault(walletAddress, network);
@@ -126,25 +178,48 @@ export function createAxionveraVaultSdk(): AxionveraVaultSdk {
       saveVault(walletAddress, network, vault);
 
       await sleep(450);
-      const balance = Number(vault.balance) + Number(amount);
-      const rewards = Number(vault.rewards) + Number(amount) * 0.01;
+      const balance = Number(vault.balances[resolvedAssetId] ?? "0") + Number(amount);
+      const rewards = Number(vault.rewards[resolvedAssetId] ?? "0") + Number(amount) * 0.01;
       const completed: VaultTx = { ...tx, status: "success", hash: `SIM-${createId()}` };
 
       const next: StoredVault = {
-        balance: toFixedString(balance),
-        rewards: toFixedString(rewards),
+        balances: {
+          ...vault.balances,
+          [resolvedAssetId]: toFixedString(balance)
+        },
+        rewards: {
+          ...vault.rewards,
+          [resolvedAssetId]: toFixedString(rewards)
+        },
         txs: [completed, ...vault.txs.filter((t) => t.id !== tx.id)].slice(0, 25)
       };
       saveVault(walletAddress, network, next);
       return completed;
     },
-    async withdraw({ walletAddress, network, amount }: { walletAddress: string; network: StellarNetwork; amount: string }) {
+    async withdraw({
+      walletAddress,
+      network,
+      amount,
+      assetId,
+      assetSymbol
+    }: {
+      walletAddress: string;
+      network: StellarNetwork;
+      amount: string;
+      assetId?: string;
+      assetSymbol?: string;
+      tokenContractId?: string | null;
+    }) {
+      const resolvedAssetId = resolveAssetId(assetId);
+      const resolvedAssetSymbol = resolveAssetSymbol(assetId, assetSymbol);
       const tx: VaultTx = {
         id: createId(),
         type: "withdraw",
         amount,
         status: "pending",
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        assetId: resolvedAssetId,
+        assetSymbol: resolvedAssetSymbol
       };
 
       const vault = loadVault(walletAddress, network);
@@ -152,38 +227,61 @@ export function createAxionveraVaultSdk(): AxionveraVaultSdk {
       saveVault(walletAddress, network, vault);
 
       await sleep(450);
-      const balance = Math.max(0, Number(vault.balance) - Number(amount));
+      const balance = Math.max(0, Number(vault.balances[resolvedAssetId] ?? "0") - Number(amount));
       const completed: VaultTx = { ...tx, status: "success", hash: `SIM-${createId()}` };
 
       const next: StoredVault = {
-        balance: toFixedString(balance),
+        balances: {
+          ...vault.balances,
+          [resolvedAssetId]: toFixedString(balance)
+        },
         rewards: vault.rewards,
         txs: [completed, ...vault.txs.filter((t) => t.id !== tx.id)].slice(0, 25)
       };
       saveVault(walletAddress, network, next);
       return completed;
     },
-    async claimRewards({ walletAddress, network }: { walletAddress: string; network: StellarNetwork }) {
+    async claimRewards({
+      walletAddress,
+      network,
+      assetId,
+      assetSymbol
+    }: {
+      walletAddress: string;
+      network: StellarNetwork;
+      assetId?: string;
+      assetSymbol?: string;
+    }) {
+      const resolvedAssetId = resolveAssetId(assetId);
+      const resolvedAssetSymbol = resolveAssetSymbol(assetId, assetSymbol);
       const vault = loadVault(walletAddress, network);
-      const amount = vault.rewards;
+      const amount = vault.rewards[resolvedAssetId] ?? "0";
       const tx: VaultTx = {
         id: createId(),
         type: "claim",
         amount,
         status: "pending",
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        assetId: resolvedAssetId,
+        assetSymbol: resolvedAssetSymbol
       };
 
       vault.txs = [tx, ...vault.txs].slice(0, 25);
       saveVault(walletAddress, network, vault);
 
       await sleep(450);
-      const balance = Number(vault.balance) + Number(vault.rewards);
+      const balance = Number(vault.balances[resolvedAssetId] ?? "0") + Number(vault.rewards[resolvedAssetId] ?? "0");
       const completed: VaultTx = { ...tx, status: "success", hash: `SIM-${createId()}` };
 
       const next: StoredVault = {
-        balance: toFixedString(balance),
-        rewards: "0",
+        balances: {
+          ...vault.balances,
+          [resolvedAssetId]: toFixedString(balance)
+        },
+        rewards: {
+          ...vault.rewards,
+          [resolvedAssetId]: "0"
+        },
         txs: [completed, ...vault.txs.filter((t) => t.id !== tx.id)].slice(0, 25)
       };
       saveVault(walletAddress, network, next);
@@ -191,7 +289,6 @@ export function createAxionveraVaultSdk(): AxionveraVaultSdk {
     }
   };
 
-  // Wrap all methods with resilience and error handling
   return {
     getBalances: withErrorHandling(
       withApiResilience(baseSdk.getBalances, { timeout: 5000, retries: 2 }),
