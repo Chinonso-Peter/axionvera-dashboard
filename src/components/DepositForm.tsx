@@ -14,7 +14,10 @@ type DepositFormProps = {
   status: "idle" | "pending" | "success" | "error";
   statusMessage?: string | null;
   transactionHash?: string | null;
+  walletBalance?: number | null;
 };
+
+const NETWORK_FEE_RESERVE = 0.1;
 
 export default function DepositForm({
   isConnected,
@@ -22,13 +25,15 @@ export default function DepositForm({
   onDeposit,
   status,
   statusMessage,
-  transactionHash
+  transactionHash,
+  walletBalance,
 }: DepositFormProps) {
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isValid, isDirty }
+    setValue,
+    formState: { isValid, isDirty }
   } = useForm<DepositFormData>({
     resolver: zodResolver(depositSchema),
     mode: 'onChange',
@@ -36,6 +41,20 @@ export default function DepositForm({
       amount: '' as any,
     }
   });
+
+  const spendableBalance =
+    walletBalance !== undefined && walletBalance !== null
+      ? Math.max(0, walletBalance - NETWORK_FEE_RESERVE)
+      : null;
+
+  function handleMax() {
+    if (spendableBalance !== null && spendableBalance > 0) {
+      setValue('amount', spendableBalance as any, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }
+  }
 
   const onSubmit = async (data: DepositFormData) => {
     try {
@@ -55,6 +74,24 @@ export default function DepositForm({
       <div className="mt-1 text-xs text-text-muted">Deposit tokens into the Axionvera vault.</div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4">
+
+        <div className="flex items-center justify-between text-xs text-text-muted">
+          <span>Available Balance</span>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-text-primary">
+              {spendableBalance !== null ? `${spendableBalance.toFixed(4)} XLM` : '—'}
+            </span>
+            <button
+              type="button"
+              onClick={handleMax}
+              disabled={!isConnected || spendableBalance === null || spendableBalance <= 0}
+              className="rounded-md bg-axion-500/10 px-2 py-0.5 text-xs font-semibold text-axion-400 transition hover:bg-axion-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Max
+            </button>
+          </div>
+        </div>
+
         <FormInput
           {...register('amount')}
           id="deposit-amount"
@@ -87,11 +124,19 @@ export default function DepositForm({
             }`}
           >
             <div className="font-medium">
-              {status === 'pending' ? 'Deposit transaction pending' : status === 'success' ? 'Deposit completed' : 'Deposit failed'}
+              {status === 'pending'
+                ? 'Deposit transaction pending'
+                : status === 'success'
+                  ? 'Deposit completed'
+                  : 'Deposit failed'}
             </div>
-            {statusMessage ? <div className="mt-1 text-xs opacity-90">{statusMessage}</div> : null}
+            {statusMessage ? (
+              <div className="mt-1 text-xs opacity-90">{statusMessage}</div>
+            ) : null}
             {transactionHash ? (
-              <div className="mt-1 text-xs opacity-80">Tx: {shortenAddress(transactionHash, 8)}</div>
+              <div className="mt-1 text-xs opacity-80">
+                Tx: {shortenAddress(transactionHash, 8)}
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -100,9 +145,36 @@ export default function DepositForm({
           type="submit"
           disabled={shouldDisableSubmit}
           aria-label={isSubmitting ? "Submitting deposit" : "Deposit tokens"}
-          className="w-full rounded-xl bg-axion-500 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-axion-500/20 transition hover:bg-axion-400 disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-axion-500 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-axion-500/20 transition hover:bg-axion-400 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {isSubmitting ? "Submitting..." : "Deposit"}
+          {isSubmitting ? (
+            <>
+              <svg
+                className="h-4 w-4 animate-spin"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
+              Depositing...
+            </>
+          ) : (
+            "Deposit"
+          )}
         </button>
       </form>
     </section>

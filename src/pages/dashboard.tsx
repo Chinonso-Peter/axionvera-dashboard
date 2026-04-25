@@ -51,6 +51,8 @@ export default function DashboardPage() {
                     isSubmitting={vault.isSubmitting}
                     onDeposit={vault.deposit}
                     status={vault.depositStatus}
+                    walletBalance={wallet.balance ? parseFloat(wallet.balance) : null}
+
                     statusMessage={
                       vault.depositStatus === "pending"
                         ? `Depositing ${vault.lastDepositAmount ?? "0"} tokens into the vault.`
