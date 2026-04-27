@@ -1,3 +1,4 @@
+import dynamic from "next/dynamic";
 import Head from "next/head";
 
 import BalanceCard from "@/components/BalanceCard";
@@ -8,6 +9,13 @@ import TransactionHistory from "@/components/TransactionHistory";
 import WithdrawForm from "@/components/WithdrawForm";
 import { useVault } from "@/hooks/useVault";
 import { useWalletContext } from "@/hooks/useWallet";
+
+const AnalyticsChart = dynamic(() => import("@/components/AnalyticsChart"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[400px] w-full animate-pulse rounded-2xl border border-border-primary bg-background-primary/30" />
+  ),
+});
 
 export default function DashboardPage() {
   // TODO: add analytics dashboard
@@ -81,6 +89,9 @@ export default function DashboardPage() {
                     }
                     transactionHash={vault.withdrawHash}
                   />
+                </div>
+                <div className="mt-6">
+                  <AnalyticsChart />
                 </div>
                 <div className="mt-6 w-full overflow-x-auto">
                   <TransactionHistory
