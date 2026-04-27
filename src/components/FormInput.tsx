@@ -36,7 +36,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
           ref={ref}
           id={inputId}
           aria-invalid={hasError ? "true" : "false"}
-          aria-describedby={`${showError ? errorId : ''} ${helperText ? helperId : ''}`.trim() || undefined}
+          aria-describedby={`${hasError ? errorId : ''} ${helperText ? helperId : ''}`.trim() || undefined}
           className={`
             w-full rounded-xl border px-4 py-3 text-sm text-text-primary 
             transition-all duration-200
@@ -48,14 +48,13 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
             }
             ${className}
           `}
-          {...inputProps}
-          onChange={(event) => onChange?.(event.target.value as never)}
+          {...props}
         />
         
         <div className="min-h-[1.25rem]">
-          {showError ? (
-            <p id={errorId} className="text-xs text-red-500 dark:text-red-400 font-medium">{error.message}</p>
-          ) : helperText && !touched ? (
+          {hasError ? (
+            <p id={errorId} className="text-xs text-red-500 dark:text-red-400 font-medium">{errorMessage}</p>
+          ) : helperText && !props.touched ? (
             <p id={helperId} className="text-xs text-text-muted">{helperText}</p>
           ) : null}
         </div>

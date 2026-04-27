@@ -1,12 +1,13 @@
-'use client';
-
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { FormInput } from './FormInput';
 import TransactionSuccess from './TransactionSuccess';
 import { useFormValidation } from '@/hooks/useFormValidation';
 import { depositSchema, DepositFormData } from '@/utils/validation';
 import { notify } from '@/utils/notifications';
-import { shortenAddress } from '@/utils/contractHelpers';
+import { shortenAddress, type TransactionSimulation } from '@/utils/contractHelpers';
+import { ConfirmTransactionModal } from './ConfirmTransactionModal';
 import { AppTooltip } from './AppTooltip';
 import { GLOSSARY } from '@/utils/glossary';
 
@@ -18,6 +19,7 @@ type DepositFormProps = {
   statusMessage?: string | null;
   transactionHash?: string | null;
   walletBalance?: number | null;
+  onSimulate?: (amount: string) => Promise<TransactionSimulation>;
 };
 
 const NETWORK_FEE_RESERVE = 0.1;
@@ -30,14 +32,12 @@ export default function DepositForm({
   statusMessage,
   transactionHash,
   walletBalance,
+  onSimulate,
 }: DepositFormProps) {
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [depositAmount, setDepositAmount] = useState('');
-
-  const initialValues: DepositFormData = {
-    amount: '',
-  };
-
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [simulationData, setSimulationData] = useState<TransactionSimulation | null>(null);
+  const [pendingAmount, setPendingAmount] = useState<string>('');
+  const [isSimulating, setIsSimulating] = useState(false);
   const {
     register,
     handleSubmit,
@@ -59,13 +59,52 @@ export default function DepositForm({
     }
   }, [status, transactionHash, depositAmount]);
 
-  const handleCloseModal = () => {
-    setShowSuccessModal(false);
-    setDepositAmount('');
-    reset();
+  const onSubmit = async (data: DepositFormData) => {
+    const amountStr = data.amount.toString();
+    if (onSimulate) {
+      setPendingAmount(amountStr);
+      setIsModalOpen(true);
+      setSimulationData(null);
+      setIsSimulating(true);
+      try {
+        const sim = await onSimulate(amountStr);
+        setSimulationData(sim);
+      } catch (error) {
+        console.error('Simulation error:', error);
+        setIsModalOpen(false);
+        notify.error("Simulation Failed", "Could not simulate transaction.");
+      } finally {
+        setIsSimulating(false);
+      }
+    } else {
+      executeDeposit(amountStr);
+    }
   };
 
-  const amountProps = getFieldProps('amount');
+  const executeDeposit = async (amount: string) => {
+    try {
+      await onDeposit(amount);
+      notify.success("Deposit Successful", `You have deposited ${amount} tokens.`);
+      reset();
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error('Deposit error:', error);
+      setIsModalOpen(false);
+    }
+  };
+
+  const handleConfirm = () => {
+    if (pendingAmount) {
+      executeDeposit(pendingAmount);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSimulationData(null);
+  };
+
+  const shouldDisableSubmit = !isConnected || !isValid || !isDirty || isSubmitting || isSimulating;
 
   return (
     <>
@@ -115,16 +154,52 @@ export default function DepositForm({
         </form>
       </section>
 
-      {/* Transaction Success Modal */}
-      {showSuccessModal && transactionHash && (
-        <TransactionSuccess
-          amount={depositAmount}
-          assetSymbol="AXNV"
-          transactionHash={transactionHash}
-          type="deposit"
-          onClose={handleCloseModal}
-        />
-      )}
-    </>
+        <button
+          type="submit"
+          disabled={shouldDisableSubmit}
+          aria-label={isSubmitting ? "Submitting deposit" : "Deposit tokens"}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-axion-500 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-axion-500/20 transition hover:bg-axion-400 disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {isSubmitting ? (
+            <>
+              <svg
+                className="h-4 w-4 animate-spin"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
+              Depositing...
+            </>
+          ) : (
+            "Deposit"
+          )}
+        </button>
+      </form>
+
+      <ConfirmTransactionModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onConfirm={handleConfirm}
+        action="deposit"
+        amount={pendingAmount}
+        simulation={simulationData}
+        isConfirming={isSubmitting}
+      />
+    </section>
   );
 }

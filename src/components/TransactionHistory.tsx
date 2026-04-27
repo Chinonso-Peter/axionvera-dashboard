@@ -215,7 +215,7 @@ export default function TransactionHistory({
                   <span className="text-text-muted">{new Date(tx.createdAt).toLocaleString()}</span>
                 </div>
                 {tx.hash ? <div className="text-xs text-text-muted">Hash: {shortenAddress(tx.hash, 8)}</div> : null}
-              </article>
+              </div>
             ))
           )}
         </div>
