@@ -34,6 +34,7 @@ export default function SecuritySettingsForm({ onSubmit }: SecuritySettingsFormP
 
   const newPassword = watch('newPassword') || '';
   const hasNewPassword = newPassword.length > 0;
+  const shouldDisableSubmit = !isValid || !isDirty || isSubmitting;
 
   return (
     <div className="rounded-2xl border border-border-primary bg-background-primary/30 p-6">
@@ -147,11 +148,11 @@ export default function SecuritySettingsForm({ onSubmit }: SecuritySettingsFormP
             <div className="text-xs font-medium text-text-secondary">Password Strength</div>
             <div className="space-y-1">
               <div className="flex items-center gap-2" role="progressbar" aria-valuemin={0} aria-valuemax={5} aria-valuenow={[
-                (values.newPassword || '').length >= 8,
-                /[A-Z]/.test(values.newPassword || ''),
-                /[a-z]/.test(values.newPassword || ''),
-                /[0-9]/.test(values.newPassword || ''),
-                /[^A-Za-z0-9]/.test(values.newPassword || '')
+                newPassword.length >= 8,
+                /[A-Z]/.test(newPassword),
+                /[a-z]/.test(newPassword),
+                /[0-9]/.test(newPassword),
+                /[^A-Za-z0-9]/.test(newPassword)
               ].filter(Boolean).length} aria-label="Password strength">
                 <div className={`h-1 flex-1 rounded-full ${
                   newPassword.length >= 8 ? 'bg-green-500' : 'bg-slate-700'
