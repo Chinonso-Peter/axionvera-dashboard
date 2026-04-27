@@ -1,12 +1,21 @@
 import dynamic from "next/dynamic";
 import Head from "next/head";
+import dynamic from "next/dynamic";
 
 import BalanceCard from "@/components/BalanceCard";
 import DepositForm from "@/components/DepositForm";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
-import TransactionHistory from "@/components/TransactionHistory";
+import { TransactionSkeleton } from "@/components/Skeletons";
 import WithdrawForm from "@/components/WithdrawForm";
+
+const TransactionHistory = dynamic(
+  () => import("@/components/TransactionHistory"),
+  {
+    loading: () => <TransactionSkeleton />,
+    ssr: false,
+  }
+);
 import { useVault } from "@/hooks/useVault";
 import { useWalletContext } from "@/hooks/useWallet";
 
