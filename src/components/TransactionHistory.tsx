@@ -98,7 +98,6 @@ export default function TransactionHistory({
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
@@ -224,13 +223,108 @@ export default function TransactionHistory({
         {hasActiveFilter ? (
           <button
             type="button"
-            onClick={onClaimRewards}
-            disabled={!isConnected || isClaiming}
-            aria-label={isClaiming ? "Claiming rewards" : "Claim your earned rewards"}
-            className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-text-primary transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={clearFilters}
+            aria-label="Clear all transaction filters"
+            className="text-xs text-axion-400 transition hover:text-axion-300 focus:outline-none focus:underline"
           >
-            {isClaiming ? "Claiming..." : "Claim Rewards"}
+            Clear filters
           </button>
+        ) : null}
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              aria-label="Open filter options"
+              aria-expanded={isFilterOpen}
+              className={`rounded-xl px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                hasActiveFilter
+                  ? "bg-axion-500/20 text-axion-400 hover:bg-axion-500/30"
+                  : "bg-white/10 text-text-primary hover:bg-white/15"
+              }`}
+            >
+              Filter {hasActiveFilter ? "•" : ""}
+            </button>
+            <FilterPopover isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)}>
+              <div className="space-y-4">
+                <div className="border-b border-border-primary pb-3">
+                  <h3 className="text-sm font-semibold text-text-primary">Filter Transactions</h3>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="type-filter" className="mb-1.5 block text-xs text-text-muted">Type</label>
+                    <select
+                      id="type-filter"
+                      value={typeFilter}
+                      onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
+                      className={`${selectClassName} w-full`}
+                      aria-label="Filter transactions by type"
+                    >
+                      {TYPE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="status-filter" className="mb-1.5 block text-xs text-text-muted">Status</label>
+                    <select
+                      id="status-filter"
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                      className={`${selectClassName} w-full`}
+                      aria-label="Filter transactions by status"
+                    >
+                      {STATUS_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label htmlFor="start-date" className="mb-1.5 block text-xs text-text-muted">Start Date</label>
+                      <input
+                        id="start-date"
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className={selectClassName}
+                        aria-label="Filter transactions from date"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="end-date" className="mb-1.5 block text-xs text-text-muted">End Date</label>
+                      <input
+                        id="end-date"
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className={selectClassName}
+                        aria-label="Filter transactions to date"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {hasActiveFilter ? (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    aria-label="Clear all transaction filters"
+                    className="w-full rounded-lg border border-border-primary px-3 py-2 text-xs font-medium text-text-secondary transition hover:bg-background-secondary/60 hover:text-text-primary"
+                  >
+                    Clear Filters
+                  </button>
+                ) : null}
+              </div>
+            </FilterPopover>
+          </div>
         </div>
       </div>
 
@@ -288,15 +382,6 @@ export default function TransactionHistory({
                     </div>
                   ) : null}
                 </div>
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="text-text-muted">Amount</span>
-                  <span className="text-text-primary">{formatAmount(tx.amount)}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="text-text-muted">Date</span>
-                  <span className="text-text-muted">{new Date(tx.createdAt).toLocaleString()}</span>
-                </div>
-                {tx.hash ? <div className="text-xs text-text-muted">Hash: {shortenAddress(tx.hash, 8)}</div> : null}
               </div>
             ))
           )}
@@ -305,8 +390,7 @@ export default function TransactionHistory({
 
       {hasActiveFilter && !isLoading ? (
         <div className="mt-3 text-xs text-text-muted">
-          Showing {filteredTransactions.length} of {transactions.length}{" "}
-          transactions
+          Showing {sortedTransactions.length} of {transactions.length} transactions
         </div>
       ) : null}
     </section>
