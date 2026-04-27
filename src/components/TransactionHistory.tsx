@@ -92,6 +92,7 @@ export default function TransactionHistory({
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
