@@ -28,6 +28,7 @@ export default function WithdrawForm({
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isValid, isDirty }
   } = useForm<WithdrawFormData>({
     resolver: zodResolver(createWithdrawSchema(parseFloat(balance))),
@@ -36,6 +37,14 @@ export default function WithdrawForm({
       amount: '' as any,
     }
   });
+
+  const numericBalance = parseFloat(balance);
+
+  function handleMax() {
+    if (numericBalance > 0) {
+      setValue('amount', numericBalance as any, { shouldValidate: true, shouldDirty: true });
+    }
+  }
 
   const onSubmit = async (data: WithdrawFormData) => {
     try {
@@ -53,11 +62,22 @@ export default function WithdrawForm({
     <section className="rounded-2xl border border-border-primary bg-background-primary/30 p-6">
       <div className="text-sm font-semibold text-text-primary">Withdraw</div>
       <div className="mt-1 text-xs text-text-muted">Withdraw tokens from the Axionvera vault.</div>
-      <div className="mt-3 rounded-xl border border-border-primary bg-background-secondary/20 px-4 py-3 text-xs text-text-secondary">
-        Available balance: <span className="font-medium text-text-primary">{formatAmount(balance)}</span>
-      </div>
-
       <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4">
+        <div className="flex items-center justify-between text-xs text-text-muted">
+          <span>Available Balance</span>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-text-primary">{formatAmount(balance)}</span>
+            <button
+              type="button"
+              onClick={handleMax}
+              disabled={!isConnected || numericBalance <= 0}
+              className="rounded-md bg-axion-500/10 px-2 py-0.5 text-xs font-semibold text-axion-400 transition hover:bg-axion-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Max
+            </button>
+          </div>
+        </div>
+
         <FormInput
           {...register('amount')}
           id="withdraw-amount"
@@ -95,9 +115,36 @@ export default function WithdrawForm({
           type="submit"
           disabled={shouldDisableSubmit}
           aria-label={isSubmitting ? "Submitting withdrawal" : "Withdraw tokens"}
-          className="w-full rounded-xl border border-border-primary bg-background-secondary/30 px-4 py-3 text-sm font-medium text-text-primary transition hover:bg-background-secondary/60 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-border-primary bg-background-secondary/30 px-4 py-3 text-sm font-medium text-text-primary transition hover:bg-background-secondary/60 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSubmitting ? "Submitting..." : "Withdraw"}
+          {isSubmitting ? (
+            <>
+              <svg
+                className="h-4 w-4 animate-spin"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
+              Withdrawing...
+            </>
+          ) : (
+            "Withdraw"
+          )}
         </button>
       </form>
     </section>
