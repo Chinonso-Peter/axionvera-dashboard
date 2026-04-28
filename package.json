@@ -48,6 +48,7 @@
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.3.2",
+    "@next/bundle-analyzer": "^16.2.4",
     "@playwright/test": "^1.59.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",
