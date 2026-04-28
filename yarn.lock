@@ -1159,6 +1159,13 @@
     "@types/prop-types" "*"
     csstype "^3.2.2"
 
+"@types/readable-stream@^4.0.23":
+  version "4.0.23"
+  resolved "https://registry.npmjs.org/@types/readable-stream/-/readable-stream-4.0.23.tgz"
+  integrity sha512-wwXrtQvbMHxCbBgjHaMGEmImFTQxxpfMOR/ZoQnXxB1woqkUbdLGFDgauo00Py9IudiaqSeiBiulSV9i6XIPig==
+  dependencies:
+    "@types/node" "*"
+
 "@types/stack-utils@^2.0.0":
   version "2.0.3"
   resolved "https://registry.npmjs.org/@types/stack-utils/-/stack-utils-2.0.3.tgz"
