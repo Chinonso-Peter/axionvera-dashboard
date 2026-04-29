@@ -69,7 +69,7 @@ export default function TransactionHistory({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // ✅ FILTER
+  // FILTER
   const filtered = useMemo(() => {
     return transactions.filter((tx) => {
       if (typeFilter !== "all" && tx.type !== typeFilter) return false;
@@ -78,7 +78,7 @@ export default function TransactionHistory({
     });
   }, [transactions, typeFilter, statusFilter]);
 
-  // ✅ SORT (latest first)
+  // SORT (latest first)
   const sorted = useMemo(() => {
     return [...filtered].sort(
       (a, b) =>
@@ -87,7 +87,7 @@ export default function TransactionHistory({
     );
   }, [filtered]);
 
-  // ✅ PAGINATION
+  // PAGINATION
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
 
   useEffect(() => {
@@ -130,24 +130,20 @@ export default function TransactionHistory({
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
-          className="px-2 py-1 rounded bg-background-secondary"
+          className="rounded bg-background-secondary px-2 py-1"
         >
           {TYPE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
 
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-          className="px-2 py-1 rounded bg-background-secondary"
+          className="rounded bg-background-secondary px-2 py-1"
         >
           {STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
       </div>
@@ -178,7 +174,14 @@ export default function TransactionHistory({
 
                 {tx.hash && (
                   <div className="text-xs mt-1 flex gap-1">
-                    {shortenAddress(tx.hash, 8)}
+                    <a
+                      href={getExplorerUrl(tx.hash)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline"
+                    >
+                      view
+                    </a>
                     <CopyButton text={tx.hash} label="Copy" size="sm" />
                   </div>
                 )}

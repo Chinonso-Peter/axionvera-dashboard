@@ -1,12 +1,11 @@
 import dynamic from "next/dynamic";
 import Head from "next/head";
-import dynamic from "next/dynamic";
 
 import BalanceCard from "@/components/BalanceCard";
 import DepositForm from "@/components/DepositForm";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
-import { TransactionSkeleton } from "@/components/Skeletons";
+import { TransactionSkeleton, ChartSkeleton } from "@/components/Skeletons";
 import WithdrawForm from "@/components/WithdrawForm";
 
 const TransactionHistory = dynamic(
@@ -21,9 +20,7 @@ import { useWalletContext } from "@/hooks/useWallet";
 
 const AnalyticsChart = dynamic(() => import("@/components/AnalyticsChart"), {
   ssr: false,
-  loading: () => (
-    <div className="h-[400px] w-full animate-pulse rounded-2xl border border-border-primary bg-background-primary/30" />
-  ),
+  loading: () => <ChartSkeleton />,
 });
 
 export default function DashboardPage() {
@@ -66,6 +63,7 @@ export default function DashboardPage() {
                   <DepositForm
                     isConnected={wallet.isConnected}
                     isSubmitting={vault.isSubmitting}
+                    isLoading={vault.isLoading}
                     onDeposit={vault.deposit}
                     onSimulate={vault.simulateAction}
                     status={vault.depositStatus}
@@ -85,6 +83,7 @@ export default function DashboardPage() {
                   <WithdrawForm
                     isConnected={wallet.isConnected}
                     isSubmitting={vault.isSubmitting}
+                    isLoading={vault.isLoading}
                     balance={vault.balance}
                     onWithdraw={vault.withdraw}
                     onSimulate={vault.simulateAction}
