@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormInput } from './FormInput';
-import TransactionSuccess from './TransactionSuccess';
-import { useFormValidation } from '@/hooks/useFormValidation';
-import { withdrawSchema, WithdrawFormData } from '@/utils/validation';
+import { createWithdrawSchema, WithdrawFormData } from '@/utils/validation';
 import { notify } from '@/utils/notifications';
 import { formatAmount, shortenAddress, type TransactionSimulation } from '@/utils/contractHelpers';
 import { ConfirmTransactionModal } from './ConfirmTransactionModal';
@@ -38,7 +36,8 @@ export default function WithdrawForm({
   const [pendingAmount, setPendingAmount] = useState<string>('');
   const [isSimulating, setIsSimulating] = useState(false);
 
-  if (isLoading) return <FormSkeleton />;
+  const numericBalance = parseFloat(balance);
+
   const {
     register,
     handleSubmit,
@@ -46,14 +45,14 @@ export default function WithdrawForm({
     setValue,
     formState: { errors, isValid, isDirty }
   } = useForm<WithdrawFormData>({
-    resolver: zodResolver(createWithdrawSchema(parseFloat(balance))),
+    resolver: zodResolver(createWithdrawSchema(numericBalance)),
     mode: 'onChange',
     defaultValues: {
       amount: '' as any,
     }
   });
 
-  const numericBalance = parseFloat(balance);
+  if (isLoading) return <FormSkeleton />;
 
   function handleMax() {
     if (numericBalance > 0) {
@@ -93,12 +92,6 @@ export default function WithdrawForm({
       console.error('Withdrawal error:', error);
       setIsModalOpen(false);
     }
-  }, [status, transactionHash, withdrawAmount]);
-
-  const handleCloseModal = () => {
-    setShowSuccessModal(false);
-    setWithdrawAmount('');
-    reset();
   };
 
   const handleConfirm = () => {
@@ -115,35 +108,36 @@ export default function WithdrawForm({
   const shouldDisableSubmit = !isConnected || !isValid || !isDirty || isSubmitting || isSimulating;
 
   return (
-    <section className="rounded-2xl border border-border-primary bg-background-primary/30 p-6">
-      <div className="text-sm font-semibold text-text-primary">Withdraw</div>
-      <div className="mt-1 text-xs text-text-muted">Withdraw tokens from the Axionvera vault.</div>
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4">
-        <div className="flex items-center justify-between text-xs text-text-muted">
-          <span>Available Balance</span>
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-text-primary">{formatAmount(balance)}</span>
-            <button
-              type="button"
-              onClick={handleMax}
-              disabled={!isConnected || numericBalance <= 0}
-              className="rounded-md bg-axion-500/10 px-2 py-0.5 text-xs font-semibold text-axion-400 transition hover:bg-axion-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Max
-            </button>
+    <>
+      <section className="rounded-2xl border border-border-primary bg-background-primary/30 p-6">
+        <div className="text-sm font-semibold text-text-primary">Withdraw</div>
+        <div className="mt-1 text-xs text-text-muted">Withdraw tokens from the Axionvera vault.</div>
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4">
+          <div className="flex items-center justify-between text-xs text-text-muted">
+            <span>Available Balance</span>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-text-primary">{formatAmount(balance)}</span>
+              <button
+                type="button"
+                onClick={handleMax}
+                disabled={!isConnected || numericBalance <= 0}
+                className="rounded-md bg-axion-500/10 px-2 py-0.5 text-xs font-semibold text-axion-400 transition hover:bg-axion-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Max
+              </button>
+            </div>
           </div>
-        </div>
 
-        <FormInput
-          {...register('amount')}
-          id="withdraw-amount"
-          inputMode="decimal"
-          placeholder="0.0"
-          label="Amount"
-          required
-          error={errors.amount}
-          helperText={`Enter amount between 0.0001 and ${formatAmount(balance)}`}
-        />
+          <FormInput
+            {...register('amount')}
+            id="withdraw-amount"
+            inputMode="decimal"
+            placeholder="0.0"
+            label="Amount"
+            required
+            error={errors.amount}
+            helperText={`Enter amount between 0.0001 and ${formatAmount(balance)}`}
+          />
 
           {status !== 'idle' && status !== 'success' ? (
             <div
@@ -165,42 +159,43 @@ export default function WithdrawForm({
             </div>
           ) : null}
 
-        <button
-          type="submit"
-          disabled={shouldDisableSubmit}
-          aria-label={isSubmitting ? "Submitting withdrawal" : "Withdraw tokens"}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-border-primary bg-background-secondary/30 px-4 py-3 text-sm font-medium text-text-primary transition hover:bg-background-secondary/60 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isSubmitting ? (
-            <>
-              <svg
-                className="h-4 w-4 animate-spin"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                />
-              </svg>
-              Withdrawing...
-            </>
-          ) : (
-            "Withdraw"
-          )}
-        </button>
-      </form>
+          <button
+            type="submit"
+            disabled={shouldDisableSubmit}
+            aria-label={isSubmitting ? "Submitting withdrawal" : "Withdraw tokens"}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-axion-500 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-axion-500/20 transition hover:bg-axion-400 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isSubmitting ? (
+              <>
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+                Withdrawing...
+              </>
+            ) : (
+              "Withdraw"
+            )}
+          </button>
+        </form>
+      </section>
 
       <ConfirmTransactionModal
         isOpen={isModalOpen}
@@ -211,6 +206,6 @@ export default function WithdrawForm({
         simulation={simulationData}
         isConfirming={isSubmitting}
       />
-    </section>
+    </>
   );
 }

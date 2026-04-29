@@ -3,14 +3,14 @@ import { FieldError } from 'react-hook-form';
 
 export interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string | React.ReactNode;
-  error?: FormFieldError;
-  touched?: boolean;
+  error?: FieldError | { message: string };
   helperText?: React.ReactNode;
+  isTouched?: boolean;
   children?: React.ReactNode;
 }
 
 export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
-  ({ label, error, helperText, children, className = '', ...props }, ref) => {
+  ({ label, error, helperText, isTouched, children, className = '', ...props }, ref) => {
     const hasError = !!error;
     const errorMessage = error?.message;
 
@@ -54,7 +54,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
         <div className="min-h-[1.25rem]">
           {hasError ? (
             <p id={errorId} className="text-xs text-red-500 dark:text-red-400 font-medium">{errorMessage}</p>
-          ) : helperText && !props.touched ? (
+          ) : helperText && !isTouched ? (
             <p id={helperId} className="text-xs text-text-muted">{helperText}</p>
           ) : null}
         </div>

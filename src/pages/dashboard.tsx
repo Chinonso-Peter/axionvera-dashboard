@@ -1,6 +1,5 @@
 import dynamic from "next/dynamic";
 import Head from "next/head";
-import dynamic from "next/dynamic";
 
 import BalanceCard from "@/components/BalanceCard";
 import DepositForm from "@/components/DepositForm";
