@@ -127,9 +127,19 @@ export const createWithdrawSchema = (maxBalance: number) =>
 
 export const withdrawSchema = createWithdrawSchema(10000); // Default for types
 
+// Security preferences (persisted to localStorage)
+export const SECURITY_PREFS_KEY = 'axionvera_security_prefs';
+
+export const securityPrefsSchema = z.object({
+  requireConfirmationModal: z.boolean(),
+  emailNotifications: z.boolean(),
+  trustedAddresses: z.array(z.string()),
+});
+
 // Type exports
 export type ProfileFormData = z.infer<typeof profileSchema>;
 export type SecuritySettingsFormData = z.infer<typeof securitySettingsSchema>;
 export type SettingsFormData = z.infer<typeof settingsSchema>;
 export type DepositFormData = z.infer<typeof depositSchema>;
 export type WithdrawFormData = z.infer<typeof withdrawSchema>;
+export type SecurityPrefs = z.infer<typeof securityPrefsSchema>;
