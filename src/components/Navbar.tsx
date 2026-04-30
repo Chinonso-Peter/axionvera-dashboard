@@ -8,24 +8,69 @@ import CopyButton from './CopyButton';
 import ThemeToggle from './ThemeToggle';
 
 import { WalletType } from '@/contexts/WalletContext';
+import Link from "next/link";
+import Image from "next/image";
+import { useMemo } from "react";
+
+import { useSidebar } from "@/hooks/useSidebar";
+import { shortenAddress } from "@/utils/contractHelpers";
+import CopyButton from "./CopyButton";
+import ThemeToggle from "./ThemeToggle";
+import WalletAvatar from "./WalletAvatar";
+import HelpDrawer from "./HelpDrawer";
 
 type NavbarProps = {
   publicKey: string | null;
   isConnecting: boolean;
   onConnect: (walletType: WalletType) => Promise<void>;
+  onConnect: (walletType: any) => Promise<void>;
   onDisconnect: () => void;
 };
 
-export default function Navbar({ publicKey, isConnecting, onConnect, onDisconnect }: NavbarProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+export default function Navbar({
+  publicKey,
+  isConnecting,
+  onConnect,
+  onDisconnect,
+}: NavbarProps) {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebar();
   const short = useMemo(() => (publicKey ? truncateAddress(publicKey) : null), [publicKey]);
+  const short = useMemo(
+    () => (publicKey ? shortenAddress(publicKey, 6) : null),
+    [publicKey]
+  );
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur transition-colors duration-300">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
         <div className="flex items-center gap-4">
-          {/* Desktop Sidebar Toggle */}
+
+          {/* Hamburger — visible on mobile, triggers sidebar */}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+            aria-expanded={isSidebarOpen}
+            aria-controls="main-sidebar"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/30 dark:bg-slate-900/30 text-slate-600 dark:text-slate-300 transition hover:bg-slate-200/50 dark:hover:bg-slate-900/60 lg:hidden"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              {isSidebarOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+
+          {/* Desktop sidebar toggle */}
           <button
             type="button"
             onClick={toggleSidebar}
@@ -60,6 +105,7 @@ export default function Navbar({ publicKey, isConnecting, onConnect, onDisconnec
               <div className="text-xs text-slate-500 dark:text-slate-400">Dashboard</div>
             </div>
           </Link>
+
           <nav className="hidden items-center gap-3 text-sm text-slate-600 dark:text-slate-300 sm:flex">
             <Link
               href="/dashboard"
@@ -86,9 +132,11 @@ export default function Navbar({ publicKey, isConnecting, onConnect, onDisconnec
 
         <div className="flex items-center gap-4">
           <ThemeToggle />
+          <HelpDrawer />
           {publicKey ? (
             <div className="flex items-center gap-2">
               <div className="hidden items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/30 dark:bg-slate-900/30 px-3 py-2 text-xs text-slate-700 dark:text-slate-200 sm:flex">
+                <WalletAvatar publicKey={publicKey} size={20} />
                 {short}
                 <CopyButton text={publicKey} label="Copy address" size="sm" />
               </div>
@@ -104,7 +152,7 @@ export default function Navbar({ publicKey, isConnecting, onConnect, onDisconnec
           ) : (
             <button
               type="button"
-              onClick={() => onConnect('freighter')} // Defaulting to freighter in Navbar for now, or we can add a modal later
+              onClick={() => onConnect('freighter')}
               disabled={isConnecting}
               aria-label={isConnecting ? 'Connecting to Stellar wallet' : 'Connect Stellar wallet'}
               className="rounded-xl bg-axion-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-axion-500/20 transition hover:bg-axion-400 disabled:cursor-not-allowed disabled:opacity-70"
@@ -138,36 +186,6 @@ export default function Navbar({ publicKey, isConnecting, onConnect, onDisconnec
           </button>
         </div>
       </div>
-
-      {/* Mobile Navigation */}
-      {isMenuOpen && (
-        <nav className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-6 py-4 sm:hidden">
-          <div className="flex flex-col gap-2">
-            <Link
-              href="/dashboard"
-              onClick={() => setIsMenuOpen(false)}
-              className="rounded-lg px-3 py-3 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60"
-            >
-              Vault
-            </Link>
-            <Link
-              href="/profile"
-              onClick={() => setIsMenuOpen(false)}
-              className="rounded-lg px-3 py-3 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60"
-            >
-              Profile
-            </Link>
-            <a
-              href="https://stellar.org/soroban"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-lg px-3 py-3 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60"
-            >
-              Soroban
-            </a>
-          </div>
-        </nav>
-      )}
     </header>
   );
 }

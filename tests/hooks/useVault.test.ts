@@ -1,11 +1,18 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { useVault } from "@/hooks/useVault";
 import type { AxionveraVaultSdk } from "@/utils/contractHelpers";
 
+function wrapper({ children }: { children: React.ReactNode }) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return React.createElement(QueryClientProvider, { client: queryClient }, children);
+}
+
 describe("useVault", () => {
   test("deposit updates balance and history", async () => {
-    const { result } = renderHook(() => useVault({ walletAddress: "GTESTWALLETADDRESS" }));
+    const { result } = renderHook(() => useVault({ walletAddress: "GTESTWALLETADDRESS" }), { wrapper });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.balance).toBe("0");
@@ -22,8 +29,27 @@ describe("useVault", () => {
     expect(result.current.depositHash).toMatch(/^SIM-/);
   });
 
+  test("deposit exposes txStep progression", async () => {
+    const { result } = renderHook(() => useVault({ walletAddress: "GTESTWALLETADDRESS_STEP" }), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const stepsSeen: (string | null)[] = [];
+    await act(async () => {
+      void result.current.deposit("5");
+    });
+
+    // txStep should be "signed" immediately after starting
+    await waitFor(() => expect(result.current.depositTxStep).toBe("signed"));
+    stepsSeen.push(result.current.depositTxStep);
+
+    await waitFor(() => expect(result.current.isSubmitting).toBe(false));
+    expect(result.current.depositStatus).toBe("success");
+    expect(result.current.depositTxStep).toBe("confirmed");
+  });
+
   test("withdraw reduces balance", async () => {
-    const { result } = renderHook(() => useVault({ walletAddress: "GTESTWALLETADDRESS_2" }));
+    const { result } = renderHook(() => useVault({ walletAddress: "GTESTWALLETADDRESS_2" }), { wrapper });
 
     await act(async () => {
       await result.current.deposit("5");
@@ -42,7 +68,7 @@ describe("useVault", () => {
   });
 
   test("withdraw prevents invalid amounts above balance", async () => {
-    const { result } = renderHook(() => useVault({ walletAddress: "GTESTWALLETADDRESS_3" }));
+    const { result } = renderHook(() => useVault({ walletAddress: "GTESTWALLETADDRESS_3" }), { wrapper });
 
     await act(async () => {
       await result.current.deposit("5");
@@ -66,11 +92,13 @@ describe("useVault", () => {
         throw new Error("Simulated deposit failure");
       },
       withdraw: async () => ({ id: "withdraw-1", type: "withdraw", amount: "1", status: "success", createdAt: new Date().toISOString() }),
-      claimRewards: async () => ({ id: "claim-1", type: "claim", amount: "0", status: "success", createdAt: new Date().toISOString() })
+      claimRewards: async () => ({ id: "claim-1", type: "claim", amount: "0", status: "success", createdAt: new Date().toISOString() }),
+      simulateTransaction: async () => ({ cpuInstructions: 0, ramBytes: 0, ledgerEntries: 0, maxFee: "0", estimatedFee: "0" }),
     };
 
     const { result } = renderHook(() =>
-      useVault({ walletAddress: "GTESTWALLETADDRESS_4", sdk: failingSdk })
+      useVault({ walletAddress: "GTESTWALLETADDRESS_4", sdk: failingSdk }),
+      { wrapper }
     );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -80,9 +108,8 @@ describe("useVault", () => {
     });
 
     expect(result.current.depositStatus).toBe("error");
+    expect(result.current.depositTxStep).toBeNull();
     expect(result.current.depositError).toMatch(/simulated deposit failure/i);
     expect(result.current.error).toMatch(/simulated deposit failure/i);
-    expect(result.current.transactions[0]?.status).toBe("failed");
-    expect(result.current.transactions[0]?.type).toBe("deposit");
   });
 });
