@@ -1,4 +1,5 @@
 import { useForm } from 'react-hook-form';
+import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormInput } from './FormInput';
 import { createWithdrawSchema, WithdrawFormData } from '@/utils/validation';
@@ -9,9 +10,11 @@ import type { VaultAsset } from '@/utils/vaultAssets';
 type WithdrawFormProps = {
   isConnected: boolean;
   isSubmitting: boolean;
+  isLoading?: boolean;
   balance: string;
   onWithdraw: (amount: string) => Promise<void>;
-  status: "idle" | "pending" | "success" | "error";
+  status: 'idle' | 'pending' | 'success' | 'error';
+  txStep?: TxStep | null;
   statusMessage?: string | null;
   transactionHash?: string | null;
   selectedAsset: VaultAsset;
@@ -22,9 +25,11 @@ type WithdrawFormProps = {
 export default function WithdrawForm({
   isConnected,
   isSubmitting,
+  isLoading,
   balance,
   onWithdraw,
   status,
+  txStep,
   statusMessage,
   transactionHash,
   selectedAsset,
@@ -35,14 +40,15 @@ export default function WithdrawForm({
     register,
     handleSubmit,
     reset,
+    formState: { errors, isValid, isDirty },
     setValue,
     formState: { errors, isValid, isDirty }
   } = useForm<WithdrawFormData>({
-    resolver: zodResolver(createWithdrawSchema(Number.parseFloat(balance) || 0)),
+    resolver: zodResolver(createWithdrawSchema(numericBalance)),
     mode: 'onChange',
     defaultValues: {
-      amount: '' as any,
-    }
+      amount: '' as unknown as number,
+    },
   });
 
   const numericBalance = Number.parseFloat(balance) || 0;
@@ -54,7 +60,30 @@ export default function WithdrawForm({
         shouldDirty: true,
       });
     }
-  }
+  };
+
+  const handleFormSubmit = async (data: WithdrawFormData) => {
+  const { values, errors, shouldDisableSubmit, updateField, handleBlur, handleSubmit, reset, setValue } =
+    useFormValidation({
+      schema,
+      initialValues: { amount: '' },
+    });
+
+  const executeWithdraw = async (amount: string) => {
+    try {
+      await onWithdraw(amount);
+      reset();
+      setIsModalOpen(false);
+    } catch {
+      setIsModalOpen(false);
+    }
+  };
+
+  const onSubmit = async () => {
+    const parsed = schema.safeParse(values);
+    if (!parsed.success) return;
+
+    const amountStr = values.amount.toString();
 
   const onSubmit = async (data: WithdrawFormData) => {
     try {
@@ -97,7 +126,7 @@ export default function WithdrawForm({
         </div>
 
         <div className="flex items-center justify-between text-xs text-text-muted">
-          <span>Available Balance</span>
+          <span>Available Balance:</span>
           <div className="flex items-center gap-2">
             <span className="font-medium text-text-primary">{formatAmount(balance)} {selectedAsset.symbol}</span>
             <button
@@ -112,12 +141,15 @@ export default function WithdrawForm({
         </div>
 
         <FormInput
-          {...register('amount')}
+          {...amountProps}
           id="withdraw-amount"
           inputMode="decimal"
           placeholder="0.0"
           label="Amount"
           required
+          value={values.amount}
+          onChange={(v) => updateField('amount', v)}
+          onBlur={() => handleBlur('amount')}
           error={errors.amount}
           helperText={`Enter amount between 0.0001 and ${formatAmount(balance)} ${selectedAsset.symbol}`}
         />
@@ -156,3 +188,4 @@ export default function WithdrawForm({
     </section>
   );
 }
+

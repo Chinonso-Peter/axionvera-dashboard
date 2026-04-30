@@ -31,7 +31,22 @@ describe("WithdrawForm", () => {
     await waitFor(() => expect(onWithdraw).toHaveBeenCalledWith("12.5"));
   });
 
-  test("renders transaction feedback and balance", () => {
+  test("shows TransactionStepper when status=pending and txStep is set", () => {
+    render(
+      <WithdrawForm
+        isConnected={true}
+        isSubmitting={true}
+        balance="50"
+        onWithdraw={jest.fn(async () => undefined)}
+        status="pending"
+        txStep="confirming"
+      />
+    );
+
+    expect(screen.getByRole("list", { name: /transaction progress/i })).toBeInTheDocument();
+  });
+
+  test("renders balance and success feedback", () => {
     render(
       <WithdrawForm
         isConnected={true}
