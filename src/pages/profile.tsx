@@ -10,6 +10,9 @@ import { useSidebar } from "@/hooks/useSidebar";
 import { useWalletContext } from "@/hooks/useWallet";
 import { ProfileFormData, SecuritySettingsFormData } from "@/utils/validation";
 import { useEffect } from "react";
+import WalletAvatar from "@/components/WalletAvatar";
+import { shortenAddress } from "@/utils/contractHelpers";
+import CopyButton from "@/components/CopyButton";
 
 export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -86,6 +89,56 @@ export default function ProfilePage() {
               </p>
             </div>
 
+            {/* Wallet Info */}
+            {wallet.publicKey && (
+              <div className="mb-8 rounded-2xl border border-border-primary bg-background-primary/30 p-6">
+                <h2 className="text-lg font-semibold text-text-primary mb-4">Wallet Information</h2>
+                <div className="flex items-center gap-3">
+                  <WalletAvatar publicKey={wallet.publicKey} size={40} />
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">
+                      {shortenAddress(wallet.publicKey, 8)}
+                    </p>
+                    <p className="text-xs text-text-muted">Connected Wallet</p>
+                  </div>
+                  <CopyButton text={wallet.publicKey} label="Copy full address" />
+                </div>
+              </div>
+            )}
+
+            {/* Tab Navigation */}
+            <div className="mb-8 border-b border-border-primary">
+              <nav className="-mb-px flex space-x-8">
+                <button
+                  onClick={() => setActiveTab('profile')}
+                  className={`
+                    py-2 px-1 border-b-2 text-sm font-medium transition-colors
+                    ${activeTab === 'profile'
+                      ? 'border-axion-500 text-axion-400'
+                      : 'border-transparent text-text-muted hover:text-text-secondary'
+                    }
+                  `}
+                >
+                  Profile Information
+                </button>
+                <button
+                  onClick={() => setActiveTab('security')}
+                  className={`
+                    py-2 px-1 border-b-2 text-sm font-medium transition-colors
+                    ${activeTab === 'security'
+                      ? 'border-axion-500 text-axion-400'
+                      : 'border-transparent text-text-muted hover:text-text-secondary'
+                    }
+                  `}
+                >
+                  Security Settings
+                </button>
+              </nav>
+            </div>
+
+            {/* Tab Content */}
+            <div className="space-y-6">
+              {isLoading ? (
             {/* Two-Column Layout */}
             {isLoading ? (
               <div className="space-y-6">

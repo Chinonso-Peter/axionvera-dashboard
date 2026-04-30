@@ -6,6 +6,7 @@ import { useSidebar } from "@/hooks/useSidebar";
 import { shortenAddress } from "@/utils/contractHelpers";
 import CopyButton from "./CopyButton";
 import ThemeToggle from "./ThemeToggle";
+import WalletAvatar from "./WalletAvatar";
 import HelpDrawer from "./HelpDrawer";
 
 type NavbarProps = {
@@ -117,6 +118,7 @@ export default function Navbar({
           {publicKey ? (
             <div className="flex items-center gap-2">
               <div className="hidden items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/30 dark:bg-slate-900/30 px-3 py-2 text-xs text-slate-700 dark:text-slate-200 sm:flex">
+                <WalletAvatar publicKey={publicKey} size={20} />
                 {short}
                 <CopyButton text={publicKey} label="Copy address" size="sm" />
               </div>
