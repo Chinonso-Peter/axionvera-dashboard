@@ -68,7 +68,27 @@ export default function DashboardPage() {
   return (
     <>
       <Head>
-        <title>Dashboard · Axionvera</title>
+        <title>Dashboard · AxionVera</title>
+        <meta
+          name="description"
+          content="View your AxionVera vault balances, deposit and withdraw tokens, and track your DeFi transaction history on Stellar."
+        />
+
+        {/* Open Graph */}
+        <meta property="og:title" content="Dashboard · AxionVera" />
+        <meta
+          property="og:description"
+          content="View your AxionVera vault balances, deposit and withdraw tokens, and track your DeFi transaction history."
+        />
+        <meta property="og:type" content="website" />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Dashboard · AxionVera" />
+        <meta
+          name="twitter:description"
+          content="View your AxionVera vault balances, deposit and withdraw tokens, and track your DeFi transaction history."
+        />
       </Head>
       <main className="min-h-screen bg-background-primary text-text-primary transition-colors duration-200">
         <Sidebar />
