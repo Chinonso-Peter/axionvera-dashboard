@@ -31,6 +31,7 @@ interface WalletContextType {
   isConnecting: boolean;
   error: string | null;
   walletType: WalletType | null;
+  isNetworkMismatch: boolean;
   connect: (walletType?: WalletType) => Promise<void>;
   disconnect: () => void;
 }
@@ -174,7 +175,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         const currentNetwork = await freighter.getNetwork();
         const mappedNetwork = mapFreighterNetwork(currentNetwork);
 
-        if (currentAddress !== activeAddress || mappedNetwork !== state.network) {
+        if (
+          currentAddress !== activeAddress ||
+          mappedNetwork !== state.network
+        ) {
           setState((s) => ({
             ...s,
             address: currentAddress,
@@ -333,6 +337,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       isConnecting: state.isConnecting,
       error: state.error,
       walletType: state.walletType,
+      isNetworkMismatch: state.network !== NETWORK,
       connect,
       disconnect,
     }),

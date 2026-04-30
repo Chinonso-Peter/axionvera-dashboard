@@ -4,6 +4,14 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import * as freighterApi from "@stellar/freighter-api";
 import { useWallet } from "@/hooks/useWallet";
 
+jest.mock("@/utils/networkConfig", () => ({
+  NETWORK: "mainnet",
+  SOROBAN_RPC_URL: "https://soroban-rpc.mainnet.stellar.org",
+  HORIZON_URL: "https://horizon.stellar.org",
+  AXIONVERA_VAULT_CONTRACT_ID: "REPLACE_WITH_VAULT_CONTRACT_ID",
+  AXIONVERA_TOKEN_CONTRACT_ID: "REPLACE_WITH_TOKEN_CONTRACT_ID",
+}));
+
 jest.mock("@stellar/freighter-api", () => ({
   isConnected: jest.fn(async () => true),
   isAllowed: jest.fn(async () => true),
@@ -42,7 +50,9 @@ describe("useWallet", () => {
     expect(result.current.address).toBe("GCONNECTEDPUBLICKEY");
     expect(result.current.isConnected).toBe(true);
     expect(localStorage.getItem("axionvera:wallet:was_connected")).toBe("true");
-    expect(localStorage.getItem("axionvera:wallet:last_type")).toBe("freighter");
+    expect(localStorage.getItem("axionvera:wallet:last_type")).toBe(
+      "freighter",
+    );
   });
 
   test("disconnect clears persisted wallet flags", async () => {
@@ -81,5 +91,17 @@ describe("useWallet", () => {
 
     expect(mockedFreighter.isAllowed).toHaveBeenCalledTimes(1);
     expect(result.current.walletType).toBe("freighter");
+  });
+
+  test("exposes isNetworkMismatch when connected network differs from expected", async () => {
+    const { result } = renderHook(() => useWallet(), { wrapper });
+
+    await act(async () => {
+      await result.current.connect();
+    });
+
+    expect(result.current.isConnected).toBe(true);
+    expect(result.current.network).toBe("testnet");
+    expect(result.current.isNetworkMismatch).toBe(true);
   });
 });

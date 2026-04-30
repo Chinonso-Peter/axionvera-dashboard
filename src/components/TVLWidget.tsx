@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Skeleton } from "./Skeleton";
 
 function formatTVL(raw: string): string {
   // XLM has 7 decimal places (stroops)
@@ -24,9 +25,15 @@ export default function TVLWidget() {
       <p className="text-sm font-medium uppercase tracking-widest text-gray-400">
         Total Value Locked
       </p>
-      <p className="mt-2 text-4xl font-bold text-white">
-        {error ? "—" : tvl === null ? "Loading..." : formatTVL(tvl)}
-      </p>
+      {error ? (
+        <p className="mt-2 text-4xl font-bold text-white">—</p>
+      ) : tvl === null ? (
+        <div className="mt-2 flex justify-center">
+          <Skeleton className="h-10 w-48" />
+        </div>
+      ) : (
+        <p className="mt-2 text-4xl font-bold text-white">{formatTVL(tvl)}</p>
+      )}
       <p className="mt-1 text-xs text-gray-500">Updated every 5 minutes</p>
     </div>
   );
