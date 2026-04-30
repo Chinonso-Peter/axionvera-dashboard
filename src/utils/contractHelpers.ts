@@ -1,4 +1,38 @@
+/**
+ * contractHelpers.ts
+ *
+ * Implements the AxionveraVaultSdk interface against real Soroban RPC using
+ * stellar-sdk. The internal shape mirrors the axionvera-sdk VaultContract /
+ * StellarClient API so that, once the package is published, this file becomes
+ * a thin re-export:
+ *
+ *   import { VaultContract, StellarClient } from "axionvera-sdk";
+ *
+ * Migration path is documented inline with TODO(axionvera-sdk) comments.
+ */
+
+import {
+  Contract,
+  Networks,
+  SorobanRpc,
+  TransactionBuilder,
+  BASE_FEE,
+  xdr,
+  scValToNative,
+  nativeToScVal,
+} from "stellar-sdk";
 import type { StellarNetwork } from "@/utils/networkConfig";
+import {
+  SOROBAN_RPC_URL,
+  AXIONVERA_VAULT_CONTRACT_ID,
+  NETWORK,
+} from "@/utils/networkConfig";
+import { withApiResilience, withErrorHandling, type ApiCallOptions } from "./apiResilience";
+
+// ---------------------------------------------------------------------------
+// Public types (unchanged — useVault.ts depends on these)
+// ---------------------------------------------------------------------------
+
 import { withApiResilience, withErrorHandling, ApiCallOptions } from "./apiResilience";
 ﻿import type { StellarNetwork } from "@/utils/networkConfig";
 import { withApiResilience, withErrorHandling, safeApiCall, ApiCallOptions } from "./apiResilience";
@@ -29,6 +63,26 @@ export type TransactionSimulation = {
 };
 
 export type AxionveraVaultSdk = {
+  getBalances: (
+    args: { walletAddress: string; network: StellarNetwork },
+    options?: ApiCallOptions
+  ) => Promise<VaultBalances>;
+  getTransactions: (
+    args: { walletAddress: string; network: StellarNetwork },
+    options?: ApiCallOptions
+  ) => Promise<VaultTx[]>;
+  deposit: (
+    args: { walletAddress: string; network: StellarNetwork; amount: string },
+    options?: ApiCallOptions
+  ) => Promise<VaultTx>;
+  withdraw: (
+    args: { walletAddress: string; network: StellarNetwork; amount: string },
+    options?: ApiCallOptions
+  ) => Promise<VaultTx>;
+  claimRewards: (
+    args: { walletAddress: string; network: StellarNetwork },
+    options?: ApiCallOptions
+  ) => Promise<VaultTx>;
   getBalances: (args: { walletAddress: string; network: StellarNetwork }, options?: ApiCallOptions) => Promise<VaultBalances>;
   getTransactions: (args: { walletAddress: string; network: StellarNetwork }, options?: ApiCallOptions) => Promise<VaultTx[]>;
   deposit: (args: { walletAddress: string; network: StellarNetwork; amount: string }, options?: ApiCallOptions) => Promise<VaultTx>;
@@ -37,44 +91,210 @@ export type AxionveraVaultSdk = {
   simulateTransaction: (args: { walletAddress: string; network: StellarNetwork; type: VaultTxType; amount?: string }, options?: ApiCallOptions) => Promise<TransactionSimulation>;
 };
 
-export function shortenAddress(address: string, chars = 6) {
-  if (!address) return "";
-  if (address.length <= chars * 2 + 3) return address;
-  return `${address.slice(0, chars)}...${address.slice(-chars)}`;
+// ---------------------------------------------------------------------------
+// Stellar network passphrase map
+// TODO(axionvera-sdk): replace with StellarClient.networkPassphrase()
+// ---------------------------------------------------------------------------
+
+function getNetworkPassphrase(network: StellarNetwork): string {
+  switch (network) {
+    case "mainnet":
+      return Networks.PUBLIC;
+    case "futurenet":
+      return Networks.FUTURENET;
+    case "testnet":
+    default:
+      return Networks.TESTNET;
+  }
 }
 
-export function formatAmount(amount: string) {
-  const n = Number(amount);
-  if (!Number.isFinite(n)) return amount;
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 7 }).format(n);
+// ---------------------------------------------------------------------------
+// StellarClient — thin wrapper around SorobanRpc.Server
+// TODO(axionvera-sdk): replace with `import { StellarClient } from "axionvera-sdk"`
+// ---------------------------------------------------------------------------
+
+class StellarClient {
+  readonly server: SorobanRpc.Server;
+  readonly network: StellarNetwork;
+
+  constructor(rpcUrl: string, network: StellarNetwork) {
+    this.server = new SorobanRpc.Server(rpcUrl, { allowHttp: false });
+    this.network = network;
+  }
+
+  get networkPassphrase(): string {
+    return getNetworkPassphrase(this.network);
+  }
+
+  async prepareTransaction(tx: ReturnType<TransactionBuilder["build"]>) {
+    return this.server.prepareTransaction(tx);
+  }
+
+  async sendAndConfirm(
+    signedTx: ReturnType<TransactionBuilder["build"]>
+  ): Promise<SorobanRpc.Api.GetTransactionResponse & { hash: string }> {
+    const sendResult = await this.server.sendTransaction(signedTx);
+    if (sendResult.status === "ERROR") {
+      throw new Error(`Transaction rejected by network: ${sendResult.errorResult}`);
+    }
+
+    const hash = sendResult.hash;
+    for (let i = 0; i < 15; i++) {
+      await sleep(2000);
+      const result = await this.server.getTransaction(hash);
+      if (result.status === SorobanRpc.Api.GetTransactionStatus.SUCCESS) {
+        return { ...result, hash };
+      }
+      if (result.status === SorobanRpc.Api.GetTransactionStatus.FAILED) {
+        throw new Error(`Transaction failed on-chain: ${hash}`);
+      }
+    }
+    throw new Error(`Transaction not confirmed after 30 s: ${hash}`);
+  }
 }
 
-export function parsePositiveAmount(input: string) {
-  const trimmed = input.trim();
-  const value = Number(trimmed);
-  if (!Number.isFinite(value) || value <= 0) return null;
-  return trimmed;
+// ---------------------------------------------------------------------------
+// VaultContract — wraps the Soroban contract interface
+// TODO(axionvera-sdk): replace with `import { VaultContract } from "axionvera-sdk"`
+// ---------------------------------------------------------------------------
+
+const STROOPS_PER_UNIT = 10_000_000n;
+
+function toStroops(amount: string): bigint {
+  const [whole, frac = ""] = amount.split(".");
+  const fracPadded = frac.padEnd(7, "0").slice(0, 7);
+  return BigInt(whole) * STROOPS_PER_UNIT + BigInt(fracPadded);
 }
 
-function getStorageKey(walletAddress: string, network: StellarNetwork) {
-  return `axionvera:vault:${network}:${walletAddress}`;
+function fromStroops(stroops: bigint): string {
+  const whole = stroops / STROOPS_PER_UNIT;
+  const frac = stroops % STROOPS_PER_UNIT;
+  if (frac === 0n) return whole.toString();
+  return `${whole}.${frac.toString().padStart(7, "0").replace(/0+$/, "")}`;
 }
 
-type StoredVault = {
-  balance: string;
-  rewards: string;
-  txs: VaultTx[];
-};
+class VaultContract {
+  private contract: Contract;
+  private client: StellarClient;
+
+  constructor(contractId: string, client: StellarClient) {
+    this.contract = new Contract(contractId);
+    this.client = client;
+  }
+
+  private async simulateView(
+    method: string,
+    args: xdr.ScVal[],
+    sourceAddress: string
+  ): Promise<xdr.ScVal> {
+    const account = await this.client.server.getAccount(sourceAddress);
+    const tx = new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase: this.client.networkPassphrase,
+    })
+      .addOperation(this.contract.call(method, ...args))
+      .setTimeout(30)
+      .build();
+
+    const simResult = await this.client.server.simulateTransaction(tx);
+    if (SorobanRpc.Api.isSimulationError(simResult)) {
+      throw new Error(`Simulation failed for ${method}: ${simResult.error}`);
+    }
+    const returnVal = (simResult as SorobanRpc.Api.SimulateTransactionSuccessResponse).result?.retval;
+    if (!returnVal) throw new Error(`No return value from ${method}`);
+    return returnVal;
+  }
+
+  async getBalance(walletAddress: string): Promise<string> {
+    const scAddress = nativeToScVal(walletAddress, { type: "address" });
+    const retval = await this.simulateView("get_balance", [scAddress], walletAddress);
+    const stroops = BigInt(scValToNative(retval) as string | number);
+    return fromStroops(stroops);
+  }
+
+  async getRewards(walletAddress: string): Promise<string> {
+    const scAddress = nativeToScVal(walletAddress, { type: "address" });
+    const retval = await this.simulateView("get_rewards", [scAddress], walletAddress);
+    const stroops = BigInt(scValToNative(retval) as string | number);
+    return fromStroops(stroops);
+  }
+
+  private async prepareCall(
+    method: string,
+    args: xdr.ScVal[],
+    sourceAddress: string
+  ) {
+    const account = await this.client.server.getAccount(sourceAddress);
+    const tx = new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase: this.client.networkPassphrase,
+    })
+      .addOperation(this.contract.call(method, ...args))
+      .setTimeout(60)
+      .build();
+    return this.client.prepareTransaction(tx);
+  }
+
+  async buildDepositTx(walletAddress: string, amount: string) {
+    const scAddress = nativeToScVal(walletAddress, { type: "address" });
+    const scAmount = nativeToScVal(toStroops(amount), { type: "i128" });
+    return this.prepareCall("deposit", [scAddress, scAmount], walletAddress);
+  }
+
+  async buildWithdrawTx(walletAddress: string, amount: string) {
+    const scAddress = nativeToScVal(walletAddress, { type: "address" });
+    const scAmount = nativeToScVal(toStroops(amount), { type: "i128" });
+    return this.prepareCall("withdraw", [scAddress, scAmount], walletAddress);
+  }
+
+  async buildClaimRewardsTx(walletAddress: string) {
+    const scAddress = nativeToScVal(walletAddress, { type: "address" });
+    return this.prepareCall("claim_rewards", [scAddress], walletAddress);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Wallet signer bridge (Freighter)
+// ---------------------------------------------------------------------------
+
+async function signTransactionWithWallet(
+  xdrString: string,
+  network: StellarNetwork
+): Promise<string> {
+  if (typeof window !== "undefined" && (window as any).freighter) {
+    const { signTransaction } = await import("@stellar/freighter-api");
+    const networkPassphrase = getNetworkPassphrase(network);
+    const result = await signTransaction(xdrString, { networkPassphrase });
+    return typeof result === "string" ? result : (result as any).signedTxXdr;
+  }
+  throw new Error(
+    "No compatible wallet found. Please install the Freighter browser extension."
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
-function createId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+function createId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+// ---------------------------------------------------------------------------
+// Public utility functions
+// ---------------------------------------------------------------------------
+
+export function shortenAddress(address: string, chars = 6): string {
+  if (!address) return "";
+  if (address.length <= chars * 2 + 3) return address;
+  return `${address.slice(0, chars)}...${address.slice(-chars)}`;
 function loadVault(walletAddress: string, network: StellarNetwork): StoredVault {
   if (typeof window === "undefined") return { balance: "0", rewards: "0", txs: [] };
 
@@ -93,16 +313,47 @@ function loadVault(walletAddress: string, network: StellarNetwork): StoredVault 
   }
 }
 
-function saveVault(walletAddress: string, network: StellarNetwork, vault: StoredVault) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(getStorageKey(walletAddress, network), JSON.stringify(vault));
+export function formatAmount(amount: string): string {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return amount;
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 7 }).format(n);
 }
 
-function toFixedString(n: number) {
-  return n.toString();
+export function parsePositiveAmount(input: string): string | null {
+  const trimmed = input.trim();
+  const value = Number(trimmed);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return trimmed;
 }
+
+// ---------------------------------------------------------------------------
+// createAxionveraVaultSdk
+//
+// TODO(axionvera-sdk): once published, replace internals with:
+//   import { VaultContract, StellarClient } from "axionvera-sdk";
+// ---------------------------------------------------------------------------
 
 export function createAxionveraVaultSdk(): AxionveraVaultSdk {
+  const stellarClient = new StellarClient(SOROBAN_RPC_URL, NETWORK);
+  const vault = new VaultContract(AXIONVERA_VAULT_CONTRACT_ID, stellarClient);
+
+  const baseSdk = {
+    async getBalances({ walletAddress }: { walletAddress: string; network: StellarNetwork }): Promise<VaultBalances> {
+      const [balance, rewards] = await Promise.all([
+        vault.getBalance(walletAddress),
+        vault.getRewards(walletAddress),
+      ]);
+      return { balance, rewards };
+    },
+
+    async getTransactions(_: { walletAddress: string; network: StellarNetwork }): Promise<VaultTx[]> {
+      // TODO: implement via Horizon event history or axionvera-sdk VaultContract.getHistory()
+      return [];
+    },
+
+    async deposit({ walletAddress, network, amount }: { walletAddress: string; network: StellarNetwork; amount: string }): Promise<VaultTx> {
+      const pendingTx: VaultTx = {
+        id: createId(),
   const baseSdk = {
     async getBalances({ walletAddress, network }: { walletAddress: string; network: StellarNetwork }) {
       const vault = loadVault(walletAddress, network);
@@ -125,8 +376,38 @@ export function createAxionveraVaultSdk(): AxionveraVaultSdk {
         type: "deposit",
         amount,
         status: "pending",
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       };
+      const preparedTx = await vault.buildDepositTx(walletAddress, amount);
+      const signedXdr = await signTransactionWithWallet(preparedTx.toXDR(), network);
+      const { TransactionBuilder: TB } = await import("stellar-sdk");
+      const signedTx = TB.fromXDR(signedXdr, stellarClient.networkPassphrase);
+      const result = await stellarClient.sendAndConfirm(signedTx as any);
+      return { ...pendingTx, status: "success", hash: result.hash ?? pendingTx.id };
+    },
+
+    async withdraw({ walletAddress, network, amount }: { walletAddress: string; network: StellarNetwork; amount: string }): Promise<VaultTx> {
+      const pendingTx: VaultTx = {
+        id: createId(),
+        type: "withdraw",
+        amount,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      };
+      const preparedTx = await vault.buildWithdrawTx(walletAddress, amount);
+      const signedXdr = await signTransactionWithWallet(preparedTx.toXDR(), network);
+      const { TransactionBuilder: TB } = await import("stellar-sdk");
+      const signedTx = TB.fromXDR(signedXdr, stellarClient.networkPassphrase);
+      const result = await stellarClient.sendAndConfirm(signedTx as any);
+      return { ...pendingTx, status: "success", hash: result.hash ?? pendingTx.id };
+    },
+
+    async claimRewards({ walletAddress, network }: { walletAddress: string; network: StellarNetwork }): Promise<VaultTx> {
+      const { rewards } = await baseSdk.getBalances({ walletAddress, network });
+      const pendingTx: VaultTx = {
+        id: createId(),
+        type: "claim",
+        amount: rewards,
 
       saveVault(walletAddress, network, {
         ...vault,
@@ -204,8 +485,23 @@ export function createAxionveraVaultSdk(): AxionveraVaultSdk {
         type: "claim",
         amount: vault.rewards,
         status: "pending",
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       };
+      const preparedTx = await vault.buildClaimRewardsTx(walletAddress);
+      const signedXdr = await signTransactionWithWallet(preparedTx.toXDR(), network);
+      const { TransactionBuilder: TB } = await import("stellar-sdk");
+      const signedTx = TB.fromXDR(signedXdr, stellarClient.networkPassphrase);
+      const result = await stellarClient.sendAndConfirm(signedTx as any);
+      return { ...pendingTx, status: "success", hash: result.hash ?? pendingTx.id };
+    },
+  };
+
+  return {
+    getBalances: withErrorHandling(withApiResilience(baseSdk.getBalances, { timeout: 8000, retries: 2 }), "getBalances"),
+    getTransactions: withErrorHandling(withApiResilience(baseSdk.getTransactions, { timeout: 8000, retries: 2 }), "getTransactions"),
+    deposit: withErrorHandling(withApiResilience(baseSdk.deposit, { timeout: 60000, retries: 1 }), "deposit"),
+    withdraw: withErrorHandling(withApiResilience(baseSdk.withdraw, { timeout: 60000, retries: 1 }), "withdraw"),
+    claimRewards: withErrorHandling(withApiResilience(baseSdk.claimRewards, { timeout: 60000, retries: 1 }), "claimRewards"),
 
       saveVault(walletAddress, network, {
         ...vault,

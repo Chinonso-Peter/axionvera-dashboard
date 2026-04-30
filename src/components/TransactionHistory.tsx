@@ -171,10 +171,31 @@ export default function TransactionHistory({
     });
   }, [transactions, typeFilter, statusFilter]);
 
+  const sortedTransactions = useMemo(() => {
+    const sorted = [...filteredTransactions];
+    sorted.sort((a, b) => {
+      const directionFactor = sortDirection === "asc" ? 1 : -1;
+      if (sortKey === "amount") {
+        return (Number(a.amount) - Number(b.amount)) * directionFactor;
+      }
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return (dateA - dateB) * directionFactor;
+    });
+    return sorted;
+  }, [filteredTransactions, sortKey, sortDirection]);
+
   const hasActiveFilter = typeFilter !== "all" || statusFilter !== "all";
   
   const summary = useMemo(() => getCSVSummary(transactions), [transactions]);
 
+  const toggleSort = (nextKey: SortKey) => {
+    if (sortKey === nextKey) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDirection("desc");
   const handleExportCSV = () => {
     if (!filteredTransactions.length) {
       console.warn("No transactions to export");
@@ -222,6 +243,9 @@ export default function TransactionHistory({
         <div>
           <div className="text-sm font-semibold text-text-primary">Transaction history</div>
           <div className="mt-1 text-xs text-text-muted">
+            {isConnected && publicKey
+              ? `Recent vault activity for ${shortenAddress(publicKey, 6)}`
+              : "Connect a wallet to view history."}
             {isConnected && address && !useMockData 
               ? `Recent vault activity for ${shortenAddress(address, 6)}` 
               : useMockData 
@@ -340,6 +364,9 @@ export default function TransactionHistory({
         {hasActiveFilter ? (
           <button
             type="button"
+            onClick={() => { setTypeFilter("all"); setStatusFilter("all"); }}
+            aria-label="Clear all transaction filters"
+            className="text-xs text-axion-400 transition hover:text-axion-300 focus:outline-none focus:underline"
             onClick={() => {
               setTypeFilter("all");
               setStatusFilter("all");
@@ -372,6 +399,15 @@ export default function TransactionHistory({
         </select>
       </div>
 
+      <div className="mt-5 overflow-hidden rounded-2xl border border-border-primary" role="table" aria-label="Transaction History">
+        <div
+          className="grid grid-cols-[1.2fr_1fr_1fr_0.9fr] gap-3 bg-background-secondary/20 px-4 py-3 text-xs text-text-secondary font-semibold"
+          role="row"
+        >
+          <div role="columnheader">Type</div>
+          <div role="columnheader">Amount</div>
+          <div role="columnheader">Created</div>
+          <div role="columnheader">Status</div>
       <div className="mt-5 overflow-hidden rounded-2xl border border-border-primary">
         <div className="grid grid-cols-[1.2fr_1fr_1fr_0.9fr] gap-3 bg-background-secondary/20 px-4 py-3 text-xs text-text-secondary">
           <div>Type</div>
@@ -383,6 +419,12 @@ export default function TransactionHistory({
           {isLoading ? (
             <TransactionSkeleton />
           ) : filteredTransactions.length === 0 ? (
+            <div className="px-4 py-6 text-sm text-text-secondary" role="row">
+              <div role="cell" className="col-span-4">
+                {hasActiveFilter
+                  ? "No transactions match the selected filters."
+                  : "No transactions yet."}
+              </div>
             <div className="px-4 py-6 text-sm text-text-secondary">
               {hasActiveFilter ? "No transactions match the selected filters." : "No transactions yet."}
             </div>
