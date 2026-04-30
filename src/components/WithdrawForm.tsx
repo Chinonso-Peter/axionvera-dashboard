@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormInput } from './FormInput';
 import { createWithdrawSchema, WithdrawFormData } from '@/utils/validation';
@@ -29,6 +30,7 @@ export default function WithdrawForm({
   status,
   statusMessage,
   transactionHash,
+  defaultAmount = ""
   onSimulate
 }: WithdrawFormProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -52,6 +54,12 @@ export default function WithdrawForm({
     }
   });
 
+  // Set default amount from props when component mounts and wallet is connected
+  useEffect(() => {
+    if (defaultAmount && isConnected) {
+      setValue('amount', defaultAmount as any, { shouldValidate: true, shouldDirty: true });
+    }
+  }, [defaultAmount, isConnected, setValue]);
   if (isLoading) return <FormSkeleton />;
 
   function handleMax() {

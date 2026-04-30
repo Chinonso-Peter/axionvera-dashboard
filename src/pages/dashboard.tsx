@@ -1,5 +1,7 @@
 import dynamic from "next/dynamic";
 import Head from "next/head";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import BalanceCard from "@/components/BalanceCard";
 import DepositForm from "@/components/DepositForm";
@@ -28,8 +30,39 @@ export default function DashboardPage() {
   // TODO: add wallet options
   // TODO: add governance interface
 
+  const searchParams = useSearchParams();
   const wallet = useWalletContext();
   const vault = useVault({ walletAddress: wallet.publicKey });
+
+  // URL query parameter state
+  const [activeTab, setActiveTab] = useState<TabType>("deposit");
+  const [prefilledAmount, setPrefilledAmount] = useState<string>("");
+
+  // Handle URL query parameters
+  useEffect(() => {
+    const action = searchParams.get("action");
+    const amount = searchParams.get("amount");
+
+    // Set the active tab based on action parameter
+    if (action === "deposit") {
+      setActiveTab("deposit");
+    } else if (action === "withdraw") {
+      setActiveTab("withdraw");
+    }
+
+    // Pre-fill the amount if provided
+    if (amount) {
+      setPrefilledAmount(amount);
+    }
+  }, [searchParams]);
+
+  // Auto-trigger wallet connection if not connected and action is present
+  useEffect(() => {
+    const action = searchParams.get("action");
+    if (action && !wallet.isConnected && !wallet.isConnecting) {
+      wallet.connect();
+    }
+  }, [searchParams, wallet.isConnected, wallet.isConnecting, wallet.connect]);
 
   return (
     <>
@@ -79,6 +112,7 @@ export default function DashboardPage() {
                             : null
                     }
                     transactionHash={vault.depositHash}
+                    defaultAmount={activeTab === "deposit" ? prefilledAmount : ""}
                   />
                   <WithdrawForm
                     isConnected={wallet.isConnected}
@@ -98,6 +132,7 @@ export default function DashboardPage() {
                             : null
                     }
                     transactionHash={vault.withdrawHash}
+                    defaultAmount={activeTab === "withdraw" ? prefilledAmount : ""}
                   />
                 </div>
                 <div className="mt-6">
