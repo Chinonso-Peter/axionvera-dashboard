@@ -53,4 +53,23 @@ describe("DepositForm", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/deposit completed/i);
     expect(screen.getByText(/tx:/i)).toBeInTheDocument();
   });
+
+  test("disables deposit button when network is mismatched", async () => {
+    const user = userEvent.setup();
+    const onDeposit = jest.fn(async () => undefined);
+
+    render(
+      <DepositForm
+        isConnected={true}
+        isSubmitting={false}
+        onDeposit={onDeposit}
+        status="idle"
+        isNetworkMismatch={true}
+      />
+    );
+
+    await user.type(screen.getByLabelText(/amount/i), "12.5");
+    await waitFor(() => expect(screen.getByRole("button", { name: /deposit/i })).toBeDisabled());
+  });
 });
+

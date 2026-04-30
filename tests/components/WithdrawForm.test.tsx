@@ -56,4 +56,23 @@ describe("WithdrawForm", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/withdrawal completed/i);
     expect(screen.getByText(/tx:/i)).toBeInTheDocument();
   });
+
+  test("disables withdraw button when network is mismatched", async () => {
+    const user = userEvent.setup();
+    const onWithdraw = jest.fn(async () => undefined);
+
+    render(
+      <WithdrawForm
+        isConnected={true}
+        isSubmitting={false}
+        balance="50"
+        onWithdraw={onWithdraw}
+        status="idle"
+        isNetworkMismatch={true}
+      />
+    );
+
+    await user.type(screen.getByLabelText(/amount/i), "12.5");
+    await waitFor(() => expect(screen.getByRole("button", { name: /withdraw/i })).toBeDisabled());
+  });
 });
