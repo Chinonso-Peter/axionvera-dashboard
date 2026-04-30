@@ -30,15 +30,35 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (context === undefined) {
-    // Fallback to next-themes directly if provider is missing
-    try {
-      return useNextTheme();
-    } catch {
-      throw new Error('useTheme must be used within a ThemeProvider');
-    }
+// Create a fallback hook that always calls useNextTheme at the top level
+function useNextThemeSafe() {
+  try {
+    return useNextTheme();
+  } catch {
+    return null;
   }
-  return context;
+}
+
+export function useTheme() {
+  const nextTheme = useNextTheme();
+  const context = useContext(ThemeContext);
+  
+  if (context === undefined) {
+    return nextTheme;
+  // Always call hooks at the top level, never conditionally
+  const context = useContext(ThemeContext);
+  const nextTheme = useNextThemeSafe();
+  
+  // If we have context, use it
+  if (context !== undefined) {
+    return context;
+  }
+  
+  // Fallback to next-themes directly if provider is missing
+  if (nextTheme) {
+    return nextTheme;
+  }
+  
+  // If all else fails, throw an error
+  throw new Error('useTheme must be used within a ThemeProvider');
 }
