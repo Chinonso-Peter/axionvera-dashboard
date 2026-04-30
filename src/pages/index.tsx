@@ -59,7 +59,7 @@ export default function HomePage() {
                 <>
                   <button
                     type="button"
-                    onClick={connect}
+                    onClick={() => void connect()}
                     disabled={isConnecting}
                     aria-label={isConnecting ? "Connecting to Stellar wallet" : "Connect Stellar wallet"}
                     className="inline-flex items-center justify-center rounded-xl bg-axion-500 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-axion-500/20 transition hover:bg-axion-400 disabled:cursor-not-allowed disabled:opacity-70"

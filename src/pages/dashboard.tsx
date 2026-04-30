@@ -1,3 +1,4 @@
+import dynamic from "next/dynamic";
 import Head from "next/head";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -6,12 +7,23 @@ import BalanceCard from "@/components/BalanceCard";
 import DepositForm from "@/components/DepositForm";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
-import TransactionHistory from "@/components/TransactionHistory";
+import { TransactionSkeleton, ChartSkeleton } from "@/components/Skeletons";
 import WithdrawForm from "@/components/WithdrawForm";
+
+const TransactionHistory = dynamic(
+  () => import("@/components/TransactionHistory"),
+  {
+    loading: () => <TransactionSkeleton />,
+    ssr: false,
+  }
+);
 import { useVault } from "@/hooks/useVault";
 import { useWalletContext } from "@/hooks/useWallet";
 
-type TabType = "deposit" | "withdraw";
+const AnalyticsChart = dynamic(() => import("@/components/AnalyticsChart"), {
+  ssr: false,
+  loading: () => <ChartSkeleton />,
+});
 
 export default function DashboardPage() {
   // TODO: add analytics dashboard
@@ -84,8 +96,12 @@ export default function DashboardPage() {
                   <DepositForm
                     isConnected={wallet.isConnected}
                     isSubmitting={vault.isSubmitting}
+                    isLoading={vault.isLoading}
                     onDeposit={vault.deposit}
+                    onSimulate={vault.simulateAction}
                     status={vault.depositStatus}
+                    walletBalance={wallet.balance ? parseFloat(wallet.balance) : null}
+
                     statusMessage={
                       vault.depositStatus === "pending"
                         ? `Depositing ${vault.lastDepositAmount ?? "0"} tokens into the vault.`
@@ -101,8 +117,10 @@ export default function DashboardPage() {
                   <WithdrawForm
                     isConnected={wallet.isConnected}
                     isSubmitting={vault.isSubmitting}
+                    isLoading={vault.isLoading}
                     balance={vault.balance}
                     onWithdraw={vault.withdraw}
+                    onSimulate={vault.simulateAction}
                     status={vault.withdrawStatus}
                     statusMessage={
                       vault.withdrawStatus === "pending"
@@ -116,6 +134,9 @@ export default function DashboardPage() {
                     transactionHash={vault.withdrawHash}
                     defaultAmount={activeTab === "withdraw" ? prefilledAmount : ""}
                   />
+                </div>
+                <div className="mt-6">
+                  <AnalyticsChart />
                 </div>
                 <div className="mt-6 w-full overflow-x-auto">
                   <TransactionHistory
