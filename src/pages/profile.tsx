@@ -36,7 +36,18 @@ export default function ProfilePage() {
   return (
     <>
       <Head>
-        <title>Profile · Axionvera</title>
+        <title>Profile · AxionVera</title>
+        <meta name="description" content="Manage your AxionVera profile settings and security preferences. Update your account information and security options." />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="Profile · AxionVera" />
+        <meta property="og:description" content="Manage your AxionVera profile settings and security preferences." />
+        <meta property="og:type" content="website" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Profile · AxionVera" />
+        <meta name="twitter:description" content="Manage your AxionVera profile settings and security preferences." />
       </Head>
       <main className="min-h-screen bg-background-primary">
         <Navbar

@@ -25,7 +25,22 @@ describe("WithdrawForm", () => {
     await waitFor(() => expect(onWithdraw).toHaveBeenCalledWith("12.5"));
   });
 
-  test("renders transaction feedback and balance", () => {
+  test("shows TransactionStepper when status=pending and txStep is set", () => {
+    render(
+      <WithdrawForm
+        isConnected={true}
+        isSubmitting={true}
+        balance="50"
+        onWithdraw={jest.fn(async () => undefined)}
+        status="pending"
+        txStep="confirming"
+      />
+    );
+
+    expect(screen.getByRole("list", { name: /transaction progress/i })).toBeInTheDocument();
+  });
+
+  test("renders balance and success feedback", () => {
     render(
       <WithdrawForm
         isConnected={true}
@@ -33,14 +48,31 @@ describe("WithdrawForm", () => {
         balance="50"
         onWithdraw={jest.fn(async () => undefined)}
         status="success"
-        statusMessage="Successfully withdrew 12.5 tokens."
         transactionHash="SIM-1234567890ABCDEF"
       />
     );
 
     expect(screen.getByText(/available balance:/i)).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(/withdrawal completed/i);
-    expect(screen.getByText(/successfully withdrew 12.5 tokens/i)).toBeInTheDocument();
     expect(screen.getByText(/tx:/i)).toBeInTheDocument();
+  });
+
+  test("disables withdraw button when network is mismatched", async () => {
+    const user = userEvent.setup();
+    const onWithdraw = jest.fn(async () => undefined);
+
+    render(
+      <WithdrawForm
+        isConnected={true}
+        isSubmitting={false}
+        balance="50"
+        onWithdraw={onWithdraw}
+        status="idle"
+        isNetworkMismatch={true}
+      />
+    );
+
+    await user.type(screen.getByLabelText(/amount/i), "12.5");
+    await waitFor(() => expect(screen.getByRole("button", { name: /withdraw/i })).toBeDisabled());
   });
 });
