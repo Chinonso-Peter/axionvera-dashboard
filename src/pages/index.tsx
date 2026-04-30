@@ -1,11 +1,17 @@
 import Head from 'next/head';
 import Link from 'next/link';
 
+import { useWalletContext } from "@/hooks/useWallet";
+import { shortenAddress } from "@/utils/contractHelpers";
+import WalletNotInstalledModal from "@/components/WalletNotInstalledModal";
+import { useEffect, useState } from "react";
 import { useWalletContext } from '@/hooks/useWallet';
 import { truncateAddress } from '@/utils/formatters';
 
 export default function HomePage() {
-  const { publicKey, isConnected, isConnecting, connect, disconnect } = useWalletContext();
+  const { publicKey, isConnected, isConnecting, connect, disconnect } =
+    useWalletContext();
+  const [isFreighterInstalled, setIsFrighterInsallted] = useState(false);
 
   return (
     <>
@@ -34,8 +40,8 @@ export default function HomePage() {
               Axionvera Dashboard
             </h1>
             <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-slate-600 dark:text-slate-300 transition-colors">
-              Connect your Stellar wallet, deposit into the Axionvera vault, withdraw tokens, claim
-              rewards, and track your on-chain activity.
+              Connect your Stellar wallet, deposit into the Axionvera vault,
+              withdraw tokens, claim rewards, and track your on-chain activity.
             </p>
             <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
               {isConnected ? (
@@ -66,6 +72,17 @@ export default function HomePage() {
                 <>
                   <button
                     type="button"
+                    onClick={() => {
+                      connect("freighter").then((res: any) => {
+                        console.log("Connection State : ", res);
+                        setIsFrighterInsallted(!res.walletInstalled);
+                      });
+                    }}
+                    disabled={isConnecting}
+                    aria-label={
+                      isConnecting
+                        ? "Connecting to Stellar wallet"
+                        : "Connect Stellar wallet"
                     onClick={() => connect('freighter')}
                     onClick={() => void connect()}
                     disabled={isConnecting}
@@ -91,6 +108,18 @@ export default function HomePage() {
           </div>
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
             {[
+              {
+                title: "Wallet",
+                body: "Freighter-style wallet connection and address display.",
+              },
+              {
+                title: "Vault",
+                body: "Deposit, withdraw, and claim rewards via an SDK adapter.",
+              },
+              {
+                title: "History",
+                body: "Track your latest vault transactions and statuses.",
+              },
               { title: 'Wallet', body: 'Freighter-style wallet connection and address display.' },
               { title: 'Vault', body: 'Deposit, withdraw, and claim rewards via an SDK adapter.' },
               { title: 'History', body: 'Track your latest vault transactions and statuses.' },
@@ -110,6 +139,7 @@ export default function HomePage() {
           </div>
         </div>
       </main>
+      {isFreighterInstalled && <WalletNotInstalledModal />}
     </>
   );
 }

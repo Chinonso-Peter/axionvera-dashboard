@@ -90,6 +90,12 @@ export default function App({ Component, pageProps }: AppProps) {
           <WalletProvider>
             <Component {...pageProps} />
             <ThemeToggle />
+            <Toaster
+              position="top-right"
+              richColors
+              closeButton
+              duration={4000}
+            />
             <Toaster position="top-right" richColors closeButton duration={4000} />
           </WalletProvider>
         </AppThemeProvider>

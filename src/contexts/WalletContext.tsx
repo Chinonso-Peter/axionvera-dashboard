@@ -128,6 +128,14 @@ async function fetchBalance(address: string, network: StellarNetwork): Promise<s
   }
 }
 
+function setWalletCookie() {
+  document.cookie = "hasWallet=true; path=/; SameSite=Lax";
+}
+
+function clearWalletCookie() {
+  document.cookie = "hasWallet=; path=/; max-age=0";
+}
+
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<WalletState>({
     address: null,
@@ -280,13 +288,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const connect = useCallback(async (walletType: WalletType = "freighter") => {
+  const connect = useCallback(async (walletType: WalletType) => {
+    console.log("Connecting ...", walletType);
+    let connecttionType = { walletType, walletInstalled: false };
     setState((s) => ({ ...s, isConnecting: true, error: null }));
 
     try {
       if (typeof window === 'undefined')
         throw new Error('Wallet is only available in the browser.');
       if (typeof window === "undefined") {
+        console.log("gip");
         throw new Error("Wallet is only available in the browser.");
       }
 
@@ -310,7 +321,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           throw new Error(
             "Freighter wallet not detected. Please install the Freighter extension.",
           );
-        }
+        connecttionType.walletInstalled = true;
+        await freighter.setAllowed();
+        const address = await freighter.getPublicKey();
+        const network = await freighter.getNetwork();
+        console.log(address);
 
         await freighter.setAllowed();
 
@@ -349,20 +364,38 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const albedo = await loadAlbedo();
-      const result = await albedo.publicKey({});
-      const address = result.pubkey;
+        console.log(connected);
+      } else if (walletType === "albedo") {
+        const albedo = await loadAlbedo();
+        const result = await albedo.publicKey({});
+        const address = result.pubkey;
 
-      setState({
-        address,
-        network: NETWORK,
-        balance: null,
-        isConnecting: false,
-        error: null,
-        walletType: "albedo",
-      });
-      setWalletPersistence("albedo");
-    } catch (error) {
+        // Albedo doesn't provide network info, use configured network
+        setState({
+          address,
+          network: NETWORK,
+          balance: null,
+          isConnecting: false,
+          error: null,
+          walletType: "albedo",
+        });
+      }
+
+      // setState({
+      //   address,
+      //   network: mappedNetwork,
+      //   balance: null,
+      //   isConnecting: false,
+      //   error: null,
+      //   walletType,
+      // });
+      // notify.success(
+      //   "Wallet Connected",
+      //   `Successfully connected to ${walletType} wallet.`,
+      // );
+      return connecttionType;
+    } catch (e) {
+      console.log(e);
       const message =
         error instanceof Error ? error.message : "Failed to connect wallet.";
 
@@ -373,6 +406,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         error: message,
         walletType: null,
       }));
+      return connecttionType;
     }
   }, []);
 
@@ -390,6 +424,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       error: null,
       walletType: null,
     }));
+    return state;
   }, []);
 
   const value = useMemo<WalletContextType>(
