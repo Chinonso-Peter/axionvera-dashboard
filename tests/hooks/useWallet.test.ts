@@ -1,8 +1,48 @@
+import React, { type ReactNode } from 'react';
+import { act, renderHook } from '@testing-library/react';
+
+import { useWallet } from '@/hooks/useWallet';
+
+jest.mock('@stellar/freighter-api', () => ({
+  isConnected: jest.fn(async () => true),
+  isAllowed: jest.fn(async () => true),
+  setAllowed: jest.fn(async () => undefined),
+  getPublicKey: jest.fn(async () => 'GCONNECTEDPUBLICKEY'),
+}));
+
+describe('useWallet', () => {
+  function wrapper({ children }: { children: ReactNode }) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const walletContextModule = require('@/contexts/WalletContext') as {
+        WalletProvider?: ({ children }: { children: ReactNode }) => JSX.Element;
+      };
+
+      if (walletContextModule.WalletProvider) {
+        const WalletProvider = walletContextModule.WalletProvider;
+        return React.createElement(WalletProvider, null, children);
+      }
+    } catch {
+      // Some branches expose useWallet directly without a provider-backed context.
+    }
+
+    return React.createElement(React.Fragment, null, children);
+  }
+
+  test('connect sets address', async () => {
 import React, { type ReactNode } from "react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 
 import * as freighterApi from "@stellar/freighter-api";
 import { useWallet } from "@/hooks/useWallet";
+
+jest.mock("@/utils/networkConfig", () => ({
+  NETWORK: "mainnet",
+  SOROBAN_RPC_URL: "https://soroban-rpc.mainnet.stellar.org",
+  HORIZON_URL: "https://horizon.stellar.org",
+  AXIONVERA_VAULT_CONTRACT_ID: "REPLACE_WITH_VAULT_CONTRACT_ID",
+  AXIONVERA_TOKEN_CONTRACT_ID: "REPLACE_WITH_TOKEN_CONTRACT_ID",
+}));
 
 jest.mock("@stellar/freighter-api", () => ({
   isConnected: jest.fn(async () => true),
@@ -36,20 +76,23 @@ describe("useWallet", () => {
     const { result } = renderHook(() => useWallet(), { wrapper });
 
     await act(async () => {
-      await result.current.connect();
+      await result.current.connect('freighter');
     });
 
-    expect(result.current.address).toBe("GCONNECTEDPUBLICKEY");
+    expect(result.current.address).toBe('GCONNECTEDPUBLICKEY');
     expect(result.current.isConnected).toBe(true);
     expect(localStorage.getItem("axionvera:wallet:was_connected")).toBe("true");
-    expect(localStorage.getItem("axionvera:wallet:last_type")).toBe("freighter");
+    expect(localStorage.getItem("axionvera:wallet:last_type")).toBe(
+      "freighter",
+    );
   });
 
+  test('disconnect clears address', async () => {
   test("disconnect clears persisted wallet flags", async () => {
     const { result } = renderHook(() => useWallet(), { wrapper });
 
     await act(async () => {
-      await result.current.connect();
+      await result.current.connect('freighter');
     });
 
     act(() => {
@@ -81,5 +124,17 @@ describe("useWallet", () => {
 
     expect(mockedFreighter.isAllowed).toHaveBeenCalledTimes(1);
     expect(result.current.walletType).toBe("freighter");
+  });
+
+  test("exposes isNetworkMismatch when connected network differs from expected", async () => {
+    const { result } = renderHook(() => useWallet(), { wrapper });
+
+    await act(async () => {
+      await result.current.connect();
+    });
+
+    expect(result.current.isConnected).toBe(true);
+    expect(result.current.network).toBe("testnet");
+    expect(result.current.isNetworkMismatch).toBe(true);
   });
 });
